@@ -37,10 +37,16 @@ export default {
     }
 
     if (request.method === "POST") {
-      const body = await request.json();
-      const isWipe = body && (body.wipe === true || body.name === "WIPE");
-      const entry = body && body.name && Number.isFinite(body.score)
-        ? { name: String(body.name), score: Number(body.score) }
+      let body = null;
+      try {
+        body = await request.json();
+      } catch (_) {
+        body = null;
+      }
+      const rawName = body && body.name ? String(body.name).trim() : "";
+      const isWipe = body && (body.wipe === true || rawName.toUpperCase() === "WIPE");
+      const entry = rawName && Number.isFinite(body && body.score)
+        ? { name: rawName, score: Number(body.score) }
         : null;
 
       if (!isWipe && !entry) {
@@ -59,7 +65,12 @@ export default {
       });
       const gist = await res.json();
       const file = gist.files && gist.files["leaderboard.json"];
-      const data = file ? JSON.parse(file.content || "[]") : [];
+      let data = [];
+      try {
+        data = file ? JSON.parse(file.content || "[]") : [];
+      } catch (_) {
+        data = [];
+      }
 
       const top = isWipe ? [] : data.concat(entry).sort((a, b) => b.score - a.score).slice(0, 50);
 
@@ -69,6 +80,7 @@ export default {
           Authorization: `Bearer ${token}`,
           "User-Agent": "flappy-nexus-worker",
           Accept: "application/vnd.github+json",
+          "Content-Type": "application/json",
         },
         body: JSON.stringify({
           files: {
