@@ -37,6 +37,8 @@ export default {
     }
 
     if (request.method === "POST") {
+      const url = new URL(request.url);
+      const wipeParam = url.searchParams.get("wipe");
       let body = null;
       try {
         body = await request.json();
@@ -44,7 +46,9 @@ export default {
         body = null;
       }
       const rawName = body && body.name ? String(body.name).trim() : "";
-      const isWipe = body && (body.wipe === true || rawName.toUpperCase() === "WIPE");
+      const isWipe = (body && (body.wipe === true || rawName.toUpperCase() === "WIPE"))
+        || wipeParam === "1"
+        || wipeParam === "true";
       const entry = rawName && Number.isFinite(body && body.score)
         ? { name: rawName, score: Number(body.score) }
         : null;
