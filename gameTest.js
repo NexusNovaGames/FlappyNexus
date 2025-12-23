@@ -1171,6 +1171,8 @@ Schickt mir den finalen Story-Text für Boss 6.`,
     pendingBossStoryCursorOn = true;
     pendingBossStoryLineInterval = 1.1;
     bossCountdown = Math.max(10, pendingBossStoryLines.length * pendingBossStoryLineInterval);
+    scoreTauntTimer = 0;
+    scoreTauntText = "";
   }
 
   function updatePendingBossStory(dt) {
@@ -3277,7 +3279,7 @@ function drawUI() {
     ctx.textBaseline = "top";
   }
 
-  if (scoreTauntTimer > 0 && scoreTauntText) {
+  if (!pendingBossId && !bossTransitionActive && scoreTauntTimer > 0 && scoreTauntText) {
     const t = Math.min(1, scoreTauntTimer / SCORE_TAUNT_DURATION);
     const alpha = Math.min(1, t * 1.2);
     const bannerW = 520;
