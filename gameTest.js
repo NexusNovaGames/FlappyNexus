@@ -693,7 +693,7 @@ const assets = {
   const BOSS5_SCORE = 160; // Boss 5 bei 160 Punkten
   const BOSS6_SCORE = 200; // Boss 6 bei 200 Punkten
   const SCORE_TAUNT_DURATION = 4;
-  const SCORE_TAUNT_MIN = 60;
+  const SCORE_TAUNT_MIN = 10;
   const SCORE_TAUNT_MAX = 250;
   const SCORE_TAUNT_STEP_MIN = 12;
   const SCORE_TAUNT_STEP_MAX = 28;
@@ -4309,6 +4309,7 @@ function drawUI() {
 
   requestAnimationFrame(loop);
 });
+
 
 
 
