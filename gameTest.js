@@ -604,7 +604,9 @@ const assets = {
   let pendingBossStoryLineInterval = 1.0;
   let pendingBossStoryCursorTimer = 0;
   let pendingBossStoryCursorOn = true;
-  let bossStoryFastForward = false;
+  let pendingBossStoryRevealChars = 0;
+  let pendingBossStoryTotalChars = 0;
+  let pendingBossStoryCharRate = 90;
   let gameWon = false;
   let runGlow = 0;
   let globalTime = 0;
@@ -760,30 +762,27 @@ Schickt mir den finalen Story-Text für Boss 6.`,
 
   const PHASE_TEXTS = [
     {
-      title: "Phase 1 Discovery",
+      title: "Discover",
       lines: [
-        "Phase 1 Discovery",
-        "Phase 1 Zielarchitektur",
-        "- S/4 Utilities, TAP/BTP",
-        "- Middleware, Umsysteme",
-        "- Transformationsansatz",
-        "- Regulatorik",
-        "- Marktrollen / Varianten",
-        "- Custom Code / Daten",
-        "- Kritische Umsysteme",
+        "Discover",
+        "Zielarchitektur (S/4 Utilities, BTP, Middleware, Umsysteme)",
+        "Transformationsansatz (System Conversion vs. Landscape Transformation)",
+        "Regulatorik-Einordnung (MaBiS, GPKE, GeLi Gas, WiM, Redispatch 2.0, 24h-LW)",
+        "Bewertung Marktrollen, Abrechnungsvarianten (SLP/RLM)",
+        "Analyse Custom Code und Datenvolumina",
+        "Identifikation kritischer Umsysteme",
       ],
     },
-    { title: "Phase 2 Explore", lines: ["Phase 2 Explore", "Dummy A", "Dummy B"] },
-    { title: "Phase 3 Build", lines: ["Phase 3 Build", "Dummy A", "Dummy B"] },
-    { title: "Phase 4 Migrate", lines: ["Phase 4 Migrate", "Dummy A", "Dummy B"] },
-    { title: "Phase 5 Stabilize", lines: ["Phase 5 Stabilize", "Dummy A", "Dummy B"] },
-    { title: "Phase 6 Run", lines: ["Phase 6 Run", "Dummy A", "Dummy B"] },
-    { title: "Phase 7 Optimize", lines: ["Phase 7 Optimize", "Dummy A", "Dummy B"] },
+    { title: "Prepare", lines: ["Prepare"] },
+    { title: "Explore", lines: ["Explore"] },
+    { title: "Realize", lines: ["Realize"] },
+    { title: "Deploy", lines: ["Deploy"] },
+    { title: "Run", lines: ["Run"] },
   ];
   const PHASE_TEXT_SPEED = 120;
-  const PHASE_TEXT_LINE_GAP = 32;
+  const PHASE_TEXT_LINE_GAP = 40;
   const PHASE_TEXT_COLOR = "rgba(140, 240, 200, 0.5)";
-  const PHASE_TEXT_FONT = `16px ${SECONDARY_FONT}`;
+  const PHASE_TEXT_FONT = `600 22px ${SECONDARY_FONT}`;
   phaseTextDone = new Array(PHASE_TEXTS.length).fill(false);
 
   const PHASE1_MILESTONE_TAUNTS = [
@@ -793,13 +792,13 @@ Schickt mir den finalen Story-Text für Boss 6.`,
   ];
 
   const PHASE1_BACKGROUND_LINES = [
-    "Phase 1 Discovery",
-    "Phase 1 Zielarchitektur (S/4 Utilities, TAP/BTP, Middleware, Umsysteme)",
-    "- Transformationsansatz (System Conversion vs. Landscape Transformation)",
-    "- Regulatorik-Einordnung (MaBiS, GPKE, GeLi Gas, WiM, Redispatch 2.0, 24h-LW)",
-    "- Bewertung Marktrollen, Abrechnungsvarianten (SLP/RLM)",
-    "- Analyse Custom Code und Datenvolumina",
-    "- Identifikation kritischer Umsysteme",
+    "Discover",
+    "Zielarchitektur (S/4 Utilities, BTP, Middleware, Umsysteme)",
+    "Transformationsansatz (System Conversion vs. Landscape Transformation)",
+    "Regulatorik-Einordnung (MaBiS, GPKE, GeLi Gas, WiM, Redispatch 2.0, 24h-LW)",
+    "Bewertung Marktrollen, Abrechnungsvarianten (SLP/RLM)",
+    "Analyse Custom Code und Datenvolumina",
+    "Identifikation kritischer Umsysteme",
   ];
   const PHASE1_TEXT_SPEED = 90;
   const PHASE1_TEXT_FONT = `600 18px ${SECONDARY_FONT}`;
@@ -877,17 +876,13 @@ Schickt mir den finalen Story-Text für Boss 6.`,
     if (e.repeat) return; // kein Halten-Spammen
     if (e.code === "Space" || e.code === "ArrowUp") {
       if (pendingBossId && bossCountdown > 0) {
-        bossStoryFastForward = true;
+        pendingBossStoryRevealChars = pendingBossStoryTotalChars;
+        bossCountdown = 0;
         e.preventDefault();
         return;
       }
       flap();
       e.preventDefault();
-    }
-  });
-  window.addEventListener("keyup", e => {
-    if (e.code === "Space" || e.code === "ArrowUp") {
-      bossStoryFastForward = false;
     }
   });
   function getWorldPoint(event) {
@@ -906,6 +901,12 @@ Schickt mir den finalen Story-Text für Boss 6.`,
   function handlePointerPress(event) {
     const p = getWorldPoint(event);
     if (!p || !p.inWorld) return;
+
+    if (pendingBossId && bossCountdown > 0) {
+      pendingBossStoryRevealChars = pendingBossStoryTotalChars;
+      bossCountdown = 0;
+      return;
+    }
 
     if (!gameRunning && !gameOver) {
       if (nameButtonRect && pointInRect(p, nameButtonRect)) {
@@ -1170,22 +1171,21 @@ Schickt mir den finalen Story-Text für Boss 6.`,
     pendingBossStoryCursorTimer = 0;
     pendingBossStoryCursorOn = true;
     pendingBossStoryLineInterval = 1.1;
-    bossCountdown = Math.max(10, pendingBossStoryLines.length * pendingBossStoryLineInterval);
+    pendingBossStoryCharRate = 95;
+    pendingBossStoryRevealChars = 0;
+    pendingBossStoryTotalChars = pendingBossStoryLines.reduce((sum, line) => sum + line.length, 0);
+    bossCountdown = Math.max(6, pendingBossStoryTotalChars / pendingBossStoryCharRate + 1.4);
     scoreTauntTimer = 0;
     scoreTauntText = "";
   }
 
   function updatePendingBossStory(dt) {
     if (!pendingBossId || bossCountdown <= 0) return;
-    const speedMultiplier = bossStoryFastForward ? 3 : 1;
-    if (pendingBossStoryIndex < pendingBossStoryLines.length) {
-      pendingBossStoryTimer += dt * speedMultiplier;
-      if (pendingBossStoryTimer >= pendingBossStoryLineInterval) {
-        pendingBossStoryTimer = 0;
-        pendingBossStoryIndex += 1;
-      }
-    }
-    pendingBossStoryCursorTimer += dt * speedMultiplier;
+    pendingBossStoryRevealChars = Math.min(
+      pendingBossStoryTotalChars,
+      pendingBossStoryRevealChars + dt * pendingBossStoryCharRate
+    );
+    pendingBossStoryCursorTimer += dt;
     if (pendingBossStoryCursorTimer >= 0.45) {
       pendingBossStoryCursorTimer = 0;
       pendingBossStoryCursorOn = !pendingBossStoryCursorOn;
@@ -2797,8 +2797,7 @@ Schickt mir den finalen Story-Text für Boss 6.`,
     trailLoopPhase += (bgScrollSpeedBase * scrollMultiplier) * 0.02 * dt;
 
     if (pendingBossId) {
-      const countdownSpeed = bossStoryFastForward ? 3 : 1;
-      bossCountdown -= dt * countdownSpeed;
+      bossCountdown -= dt;
       player.vy = 0;
       if (bossCountdown <= 0) {
         bossTransitionActive = true;
@@ -2884,35 +2883,62 @@ Schickt mir den finalen Story-Text für Boss 6.`,
     if (!pendingBossStoryLines.length) return;
 
     const lineHeight = 26;
-    const maxVisible = Math.max(1, Math.floor((WORLD_H * 0.65) / lineHeight));
-    const revealed = Math.min(pendingBossStoryIndex, pendingBossStoryLines.length);
-    const focusLine = Math.min(Math.max(revealed, 0), pendingBossStoryLines.length - 1);
-    const start = Math.max(0, focusLine - maxVisible + 1);
-    const end = Math.min(pendingBossStoryLines.length, start + maxVisible);
+    const maxVisible = Math.max(1, Math.floor((WORLD_H * 0.62) / lineHeight));
+    const revealedChars = Math.min(pendingBossStoryRevealChars, pendingBossStoryTotalChars);
+    let charBudget = revealedChars;
+    let lastLineWithChars = -1;
 
     ctx.save();
     ctx.fillStyle = "rgba(0,0,0,0.65)";
     ctx.fillRect(0, 0, WORLD_W, WORLD_H);
 
-    const x = WORLD_W * 0.14;
+    const x = WORLD_W * 0.12;
     const yStart = WORLD_H * 0.16;
     ctx.font = `600 18px ${SECONDARY_FONT}`;
     ctx.fillStyle = "#e9f2ff";
     ctx.textAlign = "left";
     ctx.textBaseline = "top";
 
-    for (let i = start; i < end && i < revealed; i++) {
+    for (let i = 0; i < pendingBossStoryLines.length; i++) {
+      if (charBudget <= 0) break;
+      const line = pendingBossStoryLines[i];
+      if (charBudget >= line.length) {
+        charBudget -= line.length;
+        lastLineWithChars = i;
+      } else {
+        lastLineWithChars = i;
+        break;
+      }
+    }
+    const focusLine = Math.max(lastLineWithChars, 0);
+    const start = Math.max(0, focusLine - maxVisible + 1);
+    const end = Math.min(pendingBossStoryLines.length, start + maxVisible);
+
+    for (let i = start; i < end; i++) {
       const y = yStart + (i - start) * lineHeight;
-      ctx.fillText(pendingBossStoryLines[i], x, y);
+      const line = pendingBossStoryLines[i];
+      let drawLine = "";
+      let remaining = revealedChars;
+      for (let j = 0; j < i; j++) remaining -= pendingBossStoryLines[j].length;
+      if (remaining >= line.length) {
+        drawLine = line;
+      } else if (remaining > 0) {
+        drawLine = line.slice(0, Math.floor(remaining));
+      }
+      if (drawLine) ctx.fillText(drawLine, x, y);
     }
 
     if (pendingBossStoryCursorOn) {
-      let cursorLine = Math.min(revealed, pendingBossStoryLines.length - 1);
+      let cursorLine = Math.min(Math.max(lastLineWithChars, 0), pendingBossStoryLines.length - 1);
       if (cursorLine < start) cursorLine = start;
       if (cursorLine >= end) cursorLine = end - 1;
       const cursorY = yStart + (cursorLine - start) * lineHeight;
       ctx.fillRect(x - 10, cursorY + 4, 6, lineHeight - 8);
     }
+
+    ctx.font = `600 14px ${SECONDARY_FONT}`;
+    ctx.fillStyle = "rgba(220,240,255,0.7)";
+    ctx.fillText("Leertaste / Tap: überspringen", x, WORLD_H - 38);
 
     ctx.restore();
   }
@@ -2920,29 +2946,38 @@ Schickt mir den finalen Story-Text für Boss 6.`,
   function drawTrail() {
     if (trail.length < 2) return;
     ctx.save();
-    ctx.globalCompositeOperation = "screen";
+    ctx.globalCompositeOperation = "lighter";
 
     for (let i = 0; i < trail.length - 1; i++) {
       const a = trail[i];
       const b = trail[i + 1];
       const t = i / (trail.length - 1);
-      const alpha = (1 - t) * 0.55;
-      const width = 14 * (1 - t) + 4;
+      const alpha = (1 - t) * 0.75;
+      const width = 18 * (1 - t) + 6;
       const loopX = Math.sin(trailLoopPhase + t * 4) * 14;
       const loopY = Math.cos(trailLoopPhase * 1.2 + t * 5) * 4;
       const midX = (a.x + b.x) / 2 - 26 - t * 36 + loopX;
       const midY = (a.y + b.y) / 2 + loopY;
 
+      ctx.shadowColor = "rgba(255,140,0,0.9)";
+      ctx.shadowBlur = 18;
       ctx.beginPath();
       ctx.moveTo(a.x, a.y);
       ctx.quadraticCurveTo(midX, midY, b.x, b.y);
-      ctx.strokeStyle = `rgba(110,210,255,${alpha})`;
+      ctx.strokeStyle = `rgba(255,120,20,${alpha})`;
       ctx.lineWidth = width;
       ctx.stroke();
 
-      // zusÃÂ¤tzliche Glow-Linie
-      ctx.strokeStyle = `rgba(180,240,255,${alpha * 0.5})`;
-      ctx.lineWidth = width * 0.5;
+      ctx.shadowColor = "rgba(255,220,120,0.9)";
+      ctx.shadowBlur = 12;
+      ctx.strokeStyle = `rgba(255,210,90,${alpha * 0.8})`;
+      ctx.lineWidth = width * 0.55;
+      ctx.stroke();
+
+      ctx.shadowColor = "rgba(255,255,255,0.9)";
+      ctx.shadowBlur = 6;
+      ctx.strokeStyle = `rgba(255,250,220,${alpha * 0.6})`;
+      ctx.lineWidth = width * 0.25;
       ctx.stroke();
     }
     ctx.restore();
@@ -3204,7 +3239,15 @@ Schickt mir den finalen Story-Text für Boss 6.`,
     ctx.filter = `hue-rotate(${player.colorShift}deg)`;
 
     if (img.complete && img.naturalWidth) {
-      ctx.drawImage(img, -r, -r, r * 2, r * 2);
+      const aspect = img.width / img.height;
+      let drawW = r * 2;
+      let drawH = r * 2;
+      if (aspect > 1) {
+        drawH = drawW / aspect;
+      } else {
+        drawW = drawH * aspect;
+      }
+      ctx.drawImage(img, -drawW / 2, -drawH / 2, drawW, drawH);
     } else {
       ctx.fillStyle = "#9ef";
       ctx.beginPath();
