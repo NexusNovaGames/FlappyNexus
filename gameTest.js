@@ -72,6 +72,7 @@ document.addEventListener("DOMContentLoaded", () => {
   const BUG_BOMB_HP = 3;
   const HIGHLIGHT_PREFIX = "NN-";
   const HIGHLIGHT_COLORS = ["#5099C9", "#2E3E59", "#AFDCF1"];
+  const HIGHLIGHT_PREFIX_ALT = "NN";
   const BAD_WORDS = [
     "fuck",
     "shit",
@@ -212,15 +213,30 @@ document.addEventListener("DOMContentLoaded", () => {
     return HIGHLIGHT_COLORS[idx];
   }
 
+  function getHighlightInfo(name) {
+    const raw = (name || "").trim();
+    if (!raw) return { isHighlight: false, displayName: "" };
+    if (raw.startsWith(HIGHLIGHT_PREFIX)) {
+      return { isHighlight: true, displayName: raw.slice(HIGHLIGHT_PREFIX.length).trim() };
+    }
+    if (raw.startsWith(`${HIGHLIGHT_PREFIX_ALT} `)) {
+      return { isHighlight: true, displayName: raw.slice(HIGHLIGHT_PREFIX_ALT.length).trim() };
+    }
+    if (raw.startsWith(HIGHLIGHT_PREFIX_ALT) && raw.length > HIGHLIGHT_PREFIX_ALT.length) {
+      return { isHighlight: true, displayName: raw.slice(HIGHLIGHT_PREFIX_ALT.length).trim() };
+    }
+    return { isHighlight: false, displayName: raw };
+  }
+
   function getLeaderboardEntryStyle(entry) {
     const name = entry && entry.name ? entry.name : "";
-    if (name && name.startsWith(HIGHLIGHT_PREFIX)) {
-      const trimmed = name.slice(HIGHLIGHT_PREFIX.length).trim();
+    const info = getHighlightInfo(name);
+    if (info.isHighlight) {
       if (entry && !entry.highlightColor) {
         entry.highlightColor = pickHighlightColor();
       }
       return {
-        displayName: trimmed || "Pilot",
+        displayName: info.displayName || "Pilot",
         color: entry && entry.highlightColor ? entry.highlightColor : pickHighlightColor(),
       };
     }
@@ -1347,7 +1363,7 @@ Boss erscheint.`,
         continue;
       }
       if (!Number.isFinite(score)) continue;
-      if (name.startsWith(HIGHLIGHT_PREFIX) && !highlightColor) {
+      if (getHighlightInfo(name).isHighlight && !highlightColor) {
         highlightColor = pickHighlightColor();
       }
       const current = bestByName.get(name);
@@ -1401,7 +1417,7 @@ Boss erscheint.`,
 
   function checkScoreTaunts() {
     if (scoreTauntTimer > 0) return false;
-    if (!playerName || !playerName.startsWith(HIGHLIGHT_PREFIX)) return false;
+    if (!playerName || !getHighlightInfo(playerName).isHighlight) return false;
     if (score < SCORE_TAUNT_MIN || score > SCORE_TAUNT_MAX) return false;
     if (nextScoreTaunt <= 0) scheduleNextScoreTaunt();
     if (score < nextScoreTaunt) return false;
@@ -1414,7 +1430,7 @@ Boss erscheint.`,
 
   function checkPhaseMilestones() {
     if (scoreTauntTimer > 0) return false;
-    if (!playerName || !playerName.startsWith(HIGHLIGHT_PREFIX)) return false;
+    if (!playerName || !getHighlightInfo(playerName).isHighlight) return false;
     if (phaseMilestoneIndex >= PHASE_MILESTONES.length) return false;
     if (inBossFight || bossTransitionActive || pendingBossId) return false;
     const milestone = PHASE_MILESTONES[phaseMilestoneIndex];
@@ -4118,7 +4134,8 @@ function drawUI() {
     ctx.textAlign = "center";
     ctx.font = `600 16px ${SECONDARY_FONT}`;
     ctx.fillStyle = "#728d96";
-    ctx.fillText("Created by Patrick Dause", WORLD_W / 2, WORLD_H - 32);
+    ctx.fillText("Created By Patrick Dause", WORLD_W / 2, WORLD_H - 44);
+    ctx.fillText("Designed By Jennifer Linz", WORLD_W / 2, WORLD_H - 24);
   } else {
     startButtonRect = null;
   }
@@ -4194,7 +4211,8 @@ function drawUI() {
 
     ctx.font = `600 16px ${SECONDARY_FONT}`;
     ctx.fillStyle = "#728d96";
-    ctx.fillText("Created by Patrick Dause", WORLD_W / 2, WORLD_H - 32);
+    ctx.fillText("Created By Patrick Dause", WORLD_W / 2, WORLD_H - 44);
+    ctx.fillText("Designed By Jennifer Linz", WORLD_W / 2, WORLD_H - 24);
   } else {
     gameOverLinkRect = null;
   }
