@@ -636,6 +636,7 @@ const assets = {
   let nnTauntX = 0;
   let nnTauntY = 0;
   let nnTauntWidth = 0;
+  let nnTauntLane = 0;
   let nextScoreTaunt = 0;
   let phaseMilestoneIndices = [];
   let phaseTextPhase = 0;
@@ -722,10 +723,10 @@ const assets = {
     "Die Maustaste raucht.",
     "Unaufhaltsam.",
     "Du fliegst wie ein Commit am Freitag.",
-    "Der Boss schaut schon nerv\u00f6s.",
+    "Der Boss schaut schon nervös.",
     "Break- Nicht heute.",
     "Noch ein Versuch, noch ein Punkt.",
-    "Produktivit\u00e4tslevel: Overdrive.",
+    "Produktivitätslevel: Overdrive.",
     "Du bist der Sprint.",
     "Das ist kein Bug, das ist Feature!",
     "Patch ist raus, du auch?!",
@@ -1612,9 +1613,21 @@ Boss erscheint.`,
 
   function startNnTaunt(text) {
     if (!text) return;
+    const totalLanes = 5;
+    const reservedLane = phaseTextActive
+      ? Math.max(0, Math.min(totalLanes - 1, Math.round((phaseTextY - 140) / PHASE_TEXT_LINE_GAP)))
+      : -1;
+    let lane = Math.floor(Math.random() * totalLanes);
+    for (let i = 0; i < totalLanes; i++) {
+      const candidate = (lane + i) % totalLanes;
+      if (candidate === reservedLane || candidate === nnTauntLane) continue;
+      lane = candidate;
+      break;
+    }
+    nnTauntLane = lane;
     nnTauntText = text;
     nnTauntX = WORLD_W + 20;
-    nnTauntY = 140 + Math.floor(Math.random() * 5) * PHASE_TEXT_LINE_GAP;
+    nnTauntY = 140 + nnTauntLane * PHASE_TEXT_LINE_GAP;
     ctx.save();
     ctx.font = PHASE_TEXT_FONT;
     nnTauntWidth = ctx.measureText(nnTauntText).width;
