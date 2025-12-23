@@ -607,6 +607,7 @@ const assets = {
   let pendingBossStoryRevealChars = 0;
   let pendingBossStoryTotalChars = 0;
   let pendingBossStoryCharRate = 90;
+  let pendingBossStoryLineEnds = [];
   let gameWon = false;
   let runGlow = 0;
   let globalTime = 0;
@@ -614,7 +615,7 @@ const assets = {
   let scoreTauntText = "";
   let scoreTauntTimer = 0;
   let nextScoreTaunt = 0;
-  let phase1TauntIndex = 0;
+  let phaseMilestoneIndex = 0;
   let phaseTextPhase = 0;
   let phaseTextIndex = 0;
   let phaseTextX = 0;
@@ -668,10 +669,10 @@ const assets = {
 
   // Boss Triggers
   const BOSS_INTERVAL = 5; // PrÃÂ¼fintervall
-  const BOSS1_SCORE = 20; // Boss 1 bei 20 Punkten
-  const BOSS2_SCORE = 40; // Boss 2 bei 40 Punkten
-  const BOSS3_SCORE = 80; // Geheimboss bei 80 Punkten
-  const BOSS4_SCORE = 120; // Boss 4 bei 120 Punkten
+  const BOSS1_SCORE = 30; // Boss 1 bei 30 Punkten
+  const BOSS2_SCORE = 50; // Boss 2 bei 50 Punkten
+  const BOSS3_SCORE = 90; // Boss 3 bei 90 Punkten
+  const BOSS4_SCORE = 130; // Boss 4 bei 130 Punkten
   const BOSS5_SCORE = 160; // Boss 5 bei 160 Punkten
   const BOSS6_SCORE = 200; // Boss 6 bei 200 Punkten
   const SCORE_TAUNT_DURATION = 4;
@@ -712,7 +713,7 @@ const assets = {
   ];
 
   const BOSS_STORIES = {
-    1: `⚠️ Boss-Intro: Scope Creeper
+    1: `Scope Creeper
 
 „Wir schauen uns das erstmal nur grob an.“
 
@@ -738,10 +739,8 @@ Und je länger ihr zögert, desto mehr spawnt er.
 Fokus schwindet. Entscheidungen werden weich.
 
 Boss erscheint.`,
-    2: `Boss-Intro: Placeholder
-
-Level 2 – Prepare
-⚠️ Boss-Intro: Lord Chaos Governance
+    2: `Level 2 – Prepare
+Lord Chaos Governance
 
 Prepare begann mit guten Absichten.
 
@@ -772,10 +771,8 @@ Und je mehr ihr abstimmt, desto stärker wird er.
 Der Kalender füllt sich. Das Projekt steht still.
 
 Boss erscheint.`,
-    3: `Boss-Intro: Placeholder
-
-Level 3 – Explore
-⚠️ Boss-Intro: Fit-to-Standard Hydra
+    3: `Level 3 – Explore
+Fit-to-Standard Hydra
 
 Explore begann mit einem Ziel:
 
@@ -807,10 +804,8 @@ Und jeder Versuch, sie „sauber“ zu lösen, macht sie stärker.
 Der Standard droht zu verschwinden.
 
 Boss erscheint.`,
-    4: `Boss-Intro: Placeholder
-
-Level 4 – Realize
-⚠️ Boss-Intro: Migration Minotaur
+    4: `Level 4 – Realize
+Migration Minotaur
 
 Realize fühlte sich kontrolliert an.
 
@@ -844,10 +839,8 @@ Und jeder ungeprüfte Datensatz macht ihn stärker.
 Der Weg zum Go-Live wird enger.
 
 Boss erscheint.`,
-    5: `Boss-Intro: Placeholder
-
-Deploy
-⚠️ Boss-Intro: Cut-over Kraken
+    5: `Deploy
+Cut-over Kraken
 
 Deploy begann in Stille.
 
@@ -881,9 +874,7 @@ Und jede Sekunde macht ihn stärker.
 Keine zweite Chance. Der Go-Live steht bevor.
 
 Boss erscheint.`,
-    6: `Boss-Intro: Placeholder
-
-⚠️ Boss-Intro: Legacy Phantom
+    6: `Legacy Phantom
 
 Der Go-Live ist geschafft.
 
@@ -918,9 +909,9 @@ Boss erscheint.`,
 
   const PHASE_TEXTS = [
     {
-      title: "Discover",
+      title: "Phase 1: Discovery",
       lines: [
-        "Discover",
+        "Phase 1: Discovery",
         "Zielarchitektur (S/4 Utilities, BTP, Middleware, Umsysteme)",
         "Transformationsansatz (System Conversion vs. Landscape Transformation)",
         "Regulatorik-Einordnung (MaBiS, GPKE, GeLi Gas, WiM, Redispatch 2.0, 24h-LW)",
@@ -930,9 +921,9 @@ Boss erscheint.`,
       ],
     },
     {
-      title: "Prepare",
+      title: "Phase 2: Prepare",
       lines: [
-        "Prepare",
+        "Phase 2: Prepare",
         "Projektorganisation und Governance (Change, Test, Cut-over)",
         "Stammdaten-Governance (MaLo, MeLo, Geräte, Verträge, Stammdatenreferenzmodell)",
         "Grobes Migrationskonzept (Datenklassen, Stilllegung)",
@@ -942,9 +933,9 @@ Boss erscheint.`,
       ],
     },
     {
-      title: "Explore",
+      title: "Phase 3: Explor",
       lines: [
-        "Explore",
+        "Phase 3: Explor",
         "Fit-to-Standard Workshops (Billing, MaKo, EDM, Netz, CRM)",
         "Festlegung Standardprozesse & bewusste Abweichungen",
         "Ziel-Stammdatenmodell (MaLo/MeLo, Geräte, Verträge)",
@@ -955,9 +946,9 @@ Boss erscheint.`,
       ],
     },
     {
-      title: "Realize",
+      title: "Phase 4: Realize",
       lines: [
-        "Realize",
+        "Phase 4: Realize",
         "Customizing S/4HANA Utilities",
         "Entwicklung Erweiterungen & Integrationen",
         "Aufbau Migrationswerkzeuge",
@@ -970,9 +961,9 @@ Boss erscheint.`,
       ],
     },
     {
-      title: "Deploy",
+      title: "Phase 5: Deploy",
       lines: [
-        "Deploy",
+        "Phase 5: Deploy",
         "Finalmigration inkl. Sperrkonzept",
         "Produktivsetzung Schnittstellen & Jobs",
         "Aktivierung Marktkommunikation",
@@ -982,9 +973,9 @@ Boss erscheint.`,
       ],
     },
     {
-      title: "Run",
+      title: "Phase 6: Run",
       lines: [
-        "Run",
+        "Phase 6: Run",
         "Hypercare und Stabilisierung",
         "Performance-Optimierung",
         "Stilllegung Altsysteme",
@@ -999,14 +990,72 @@ Boss erscheint.`,
   const PHASE_TEXT_FONT = `600 22px ${SECONDARY_FONT}`;
   phaseTextDone = new Array(PHASE_TEXTS.length).fill(false);
 
-  const PHASE1_MILESTONE_TAUNTS = [
-    { score: 5, text: "Zielarchitektur abgestimmt" },
-    { score: 10, text: "Transformationsstrategie beschlossen" },
-    { score: 15, text: "Management-Go" },
+  const PHASE_MILESTONE_DEFS = [
+    {
+      offsets: [5, 10, 15],
+      texts: [
+        "Meilenstein 1: Zielarchitektur abgestimmt",
+        "Meilenstein 2: Transformationsstrategie beschlossen",
+        "Meilenstein 3: Management-Go",
+      ],
+    },
+    {
+      offsets: [5, 10, 15],
+      texts: [
+        "Meilenstein 4: Projekt arbeitsfähig",
+        "Meilenstein 5: Systemlandschaft bereit",
+        "Meilenstein 6: Integrations- & Migrationsleitplanken freigegeben",
+      ],
+    },
+    {
+      offsets: [5, 10, 15],
+      texts: [
+        "Meilenstein 7: Zielprozesslandschaft abgenommen",
+        "Meilenstein 8: Integrationskonzept freigegeben",
+        "Meilenstein 9: Stammdaten-Zielmodell verabschiedet",
+      ],
+    },
+    {
+      offsets: [5, 10, 15, 20, 25],
+      texts: [
+        "Meilenstein 10: Umsysteme angebunden → Integrationstest",
+        "Meilenstein 11: TM1 erfolgreich (technische Lauffähigkeit)",
+        "Meilenstein 12: TM2 abgenommen (fachliche Datenqualität)",
+        "Meilenstein 13: TM3 bestanden (Dress Rehearsal / Cut-over-Probe)",
+        "Meilenstein 14: Cut-over-Readiness bestätigt",
+      ],
+    },
+    {
+      offsets: [5, 10],
+      texts: [
+        "Meilenstein 15: Go-Live S/4 Utilities",
+        "Meilenstein 16: Erste erfolgreiche Abrechnung & MaKo stabil+C18",
+      ],
+    },
+    {
+      offsets: [5, 10],
+      texts: [
+        "Meilenstein 17: Hypercare abgeschlossen",
+        "Meilenstein 18: Regelbetrieb übernommen",
+      ],
+    },
   ];
+  const PHASE_MILESTONES = (() => {
+    const starts = [0, BOSS1_SCORE, BOSS2_SCORE, BOSS3_SCORE, BOSS4_SCORE, BOSS5_SCORE];
+    const milestones = [];
+    for (let i = 0; i < PHASE_MILESTONE_DEFS.length; i++) {
+      const def = PHASE_MILESTONE_DEFS[i];
+      const start = starts[i] || 0;
+      for (let j = 0; j < def.texts.length; j++) {
+        const score = start + (def.offsets[j] || 0);
+        milestones.push({ score, text: def.texts[j] });
+      }
+    }
+    return milestones.sort((a, b) => a.score - b.score);
+  })();
 
   const PHASE1_BACKGROUND_LINES = [
-    "Discover",
+    "Phase 1: Discovery",
     "Zielarchitektur (S/4 Utilities, BTP, Middleware, Umsysteme)",
     "Transformationsansatz (System Conversion vs. Landscape Transformation)",
     "Regulatorik-Einordnung (MaBiS, GPKE, GeLi Gas, WiM, Redispatch 2.0, 24h-LW)",
@@ -1090,8 +1139,7 @@ Boss erscheint.`,
     if (e.repeat) return; // kein Halten-Spammen
     if (e.code === "Space" || e.code === "ArrowUp") {
       if (pendingBossId && bossCountdown > 0) {
-        pendingBossStoryRevealChars = pendingBossStoryTotalChars;
-        bossCountdown = 0;
+        revealNextBossStoryLine();
         e.preventDefault();
         return;
       }
@@ -1117,8 +1165,7 @@ Boss erscheint.`,
     if (!p || !p.inWorld) return;
 
     if (pendingBossId && bossCountdown > 0) {
-      pendingBossStoryRevealChars = pendingBossStoryTotalChars;
-      bossCountdown = 0;
+      revealNextBossStoryLine();
       return;
     }
 
@@ -1164,7 +1211,7 @@ Boss erscheint.`,
   //  Core Helpers
   // ======================================================
   function resetGame() {
-    score = TEST_BOSS3 ? 30 : 0;
+    score = TEST_BOSS3 ? Math.max(0, BOSS3_SCORE - 5) : 0;
     gameOver = false;
     gameRunning = false;
     inBossFight = false;
@@ -1232,6 +1279,7 @@ Boss erscheint.`,
     scoreTauntText = "";
     scoreTauntTimer = 0;
     nextScoreTaunt = 0;
+    phaseMilestoneIndex = 0;
     scheduleNextScoreTaunt(0);
     phaseTextPhase = 0;
     phaseTextIndex = 0;
@@ -1349,6 +1397,19 @@ Boss erscheint.`,
     return true;
   }
 
+  function checkPhaseMilestones() {
+    if (scoreTauntTimer > 0) return false;
+    if (!playerName || !playerName.startsWith(HIGHLIGHT_PREFIX)) return false;
+    if (phaseMilestoneIndex >= PHASE_MILESTONES.length) return false;
+    if (inBossFight || bossTransitionActive || pendingBossId) return false;
+    const milestone = PHASE_MILESTONES[phaseMilestoneIndex];
+    if (!milestone || score < milestone.score) return false;
+    scoreTauntText = milestone.text;
+    scoreTauntTimer = SCORE_TAUNT_DURATION;
+    phaseMilestoneIndex += 1;
+    return true;
+  }
+
   function wrapTextLines(text, maxWidth) {
     if (!text) return [];
     const rawLines = String(text).split(/\r?\n/);
@@ -1387,7 +1448,13 @@ Boss erscheint.`,
     pendingBossStoryLineInterval = 1.1;
     pendingBossStoryCharRate = 95;
     pendingBossStoryRevealChars = 0;
-    pendingBossStoryTotalChars = pendingBossStoryLines.reduce((sum, line) => sum + line.length, 0);
+    pendingBossStoryLineEnds = [];
+    let totalChars = 0;
+    for (const line of pendingBossStoryLines) {
+      totalChars += line.length;
+      pendingBossStoryLineEnds.push(totalChars);
+    }
+    pendingBossStoryTotalChars = totalChars;
     bossCountdown = Math.max(6, pendingBossStoryTotalChars / pendingBossStoryCharRate + 1.4);
     scoreTauntTimer = 0;
     scoreTauntText = "";
@@ -1403,6 +1470,20 @@ Boss erscheint.`,
     if (pendingBossStoryCursorTimer >= 0.45) {
       pendingBossStoryCursorTimer = 0;
       pendingBossStoryCursorOn = !pendingBossStoryCursorOn;
+    }
+  }
+
+  function revealNextBossStoryLine() {
+    if (!pendingBossId || !pendingBossStoryLineEnds.length) return;
+    const current = Math.floor(pendingBossStoryRevealChars);
+    for (const end of pendingBossStoryLineEnds) {
+      if (end > current) {
+        pendingBossStoryRevealChars = end;
+        return;
+      }
+    }
+    if (pendingBossStoryRevealChars >= pendingBossStoryTotalChars) {
+      bossCountdown = 0;
     }
   }
 
@@ -1516,13 +1597,32 @@ Boss erscheint.`,
   // ======================================================
   //  Powerups
   // ======================================================
-  function randomPowerup() {
-    const list = ["ghost", "shrink", "slow", "double", "big", "shield", "turbo"];
-    return list[Math.floor(Math.random() * list.length)];
+  function randomPowerup(phaseIndex = getPhaseIndex()) {
+    const base = ["ghost", "shrink", "slow", "double", "big", "shield", "turbo"];
+    if (phaseIndex >= 4) {
+      base.push("shield", "turbo", "double");
+    } else if (phaseIndex >= 2) {
+      base.push("shield", "turbo");
+    }
+    return base[Math.floor(Math.random() * base.length)];
   }
 
-  function randomBossPowerup() {
+  function randomBossPowerup(bossId = 1) {
     const roll = Math.random();
+    if (bossId >= 5) {
+      if (roll < 0.2) return "bossshield";
+      if (roll < 0.35) return "bossheal";
+      if (roll < 0.55) return "rapid";
+      if (roll < 0.8) return "spread";
+      return "salvo";
+    }
+    if (bossId >= 4) {
+      if (roll < 0.25) return "bossshield";
+      if (roll < 0.45) return "bossheal";
+      if (roll < 0.65) return "rapid";
+      if (roll < 0.85) return "spread";
+      return "salvo";
+    }
     if (roll < 0.35) return "bossshield";
     if (roll < 0.6) return "bossheal";
     if (roll < 0.75) return "rapid";
@@ -1727,7 +1827,7 @@ Boss erscheint.`,
   function spawnLootbox(pipe) {
     if (Math.random() < lootSpawnChance) {
       const centerY = pipe.gapY + pipeGap / 2;
-      const type = randomPowerup();
+      const type = randomPowerup(getPhaseIndex());
       if (type === "ghost") ghostChallenge = true;
       lootboxes.push({
         x: pipe.x + pipeWidth / 2,
@@ -1784,7 +1884,9 @@ Boss erscheint.`,
         if (pipeGap > minPipeGap) {
           pipeGap = Math.max(minPipeGap, pipeGap - 0.04);
         }
-        checkScoreTaunts();
+        if (!checkPhaseMilestones()) {
+          checkScoreTaunts();
+        }
         checkBossTriggers();
       }
 
@@ -2132,36 +2234,45 @@ Boss erscheint.`,
       boss1Defeated = true;
       currentBackground = "bg2";
       score += 10;
-      checkScoreTaunts();
+      if (!checkPhaseMilestones()) checkScoreTaunts();
     } else if (id === 2) {
       boss2Defeated = true;
       score += 20;
-      checkScoreTaunts();
+      if (!checkPhaseMilestones()) checkScoreTaunts();
     } else if (id === 3) {
       boss3Defeated = true;
       score += 30;
-      checkScoreTaunts();
+      if (!checkPhaseMilestones()) checkScoreTaunts();
       currentBackground = "bg2";
       finalCongratsTimer = 8; // GlÃÂ¼ckwunschbanner anzeigen
     } else if (id === 4) {
       boss4Defeated = true;
       score += 40;
-      checkScoreTaunts();
+      if (!checkPhaseMilestones()) checkScoreTaunts();
       currentBackground = "bg2";
       finalCongratsTimer = 8;
     } else if (id === 5) {
       boss5Defeated = true;
       score += 50;
-      checkScoreTaunts();
+      if (!checkPhaseMilestones()) checkScoreTaunts();
       currentBackground = "bg2";
       finalCongratsTimer = 8;
     } else if (id === 6) {
       boss6Defeated = true;
       score += 60;
-      checkScoreTaunts();
+      if (!checkPhaseMilestones()) checkScoreTaunts();
       currentBackground = "bg2";
       finalCongratsTimer = 8;
     }
+
+    const postBossReward =
+      id === 2 ? "shield" :
+      id === 3 ? "spread" :
+      id === 4 ? "rapid" :
+      id === 5 ? "salvo" :
+      id === 6 ? "bossshield" :
+      null;
+    if (postBossReward) applyPowerup(postBossReward);
 
     // Bonus-Leben als Schild (ein Treffer)
     player.shieldHits = 1;
@@ -2776,9 +2887,13 @@ Boss erscheint.`,
     // Boss loot drops
     boss.lootTimer -= dt;
     if (boss.lootTimer <= 0) {
-      const base = boss.id === 3 ? 1.2 : 3.5;
+      const base =
+        boss.id >= 5 ? 1.8 :
+        boss.id === 4 ? 2.2 :
+        boss.id === 3 ? 1.4 :
+        3.2;
       boss.lootTimer = base + Math.random() * 1.0;
-      let lootType = randomBossPowerup();
+      let lootType = randomBossPowerup(boss.id);
       if (boss.id === 3) {
         const r = Math.random();
         lootType = r < 0.35 ? "bossshield" : r < 0.5 ? "bossheal" : r < 0.7 ? "salvo" : r < 0.85 ? "spread" : "rapid";
@@ -2793,7 +2908,7 @@ Boss erscheint.`,
         vx: -pipeSpeed * 0.4,
       };
       bossLoot.push(drop);
-      if (boss.id === 3 && Math.random() < 0.35) {
+      if ((boss.id === 3 && Math.random() < 0.35) || (boss.id >= 4 && Math.random() < 0.25)) {
         const extraType = Math.random() < 0.6 ? "bossshield" : "bossheal";
         bossLoot.push({ ...drop, type: extraType, y: boss.y + (Math.random() * 160 - 80) });
       }
@@ -3316,38 +3431,32 @@ Boss erscheint.`,
   function drawTrail() {
     if (trail.length < 2) return;
     ctx.save();
-    ctx.globalCompositeOperation = "lighter";
+    ctx.globalCompositeOperation = "screen";
 
     for (let i = 0; i < trail.length - 1; i++) {
       const a = trail[i];
       const b = trail[i + 1];
       const t = i / (trail.length - 1);
-      const alpha = (1 - t) * 0.75;
-      const width = 18 * (1 - t) + 6;
+      const alpha = (1 - t) * 0.55;
+      const width = 14 * (1 - t) + 4;
       const loopX = Math.sin(trailLoopPhase + t * 4) * 14;
       const loopY = Math.cos(trailLoopPhase * 1.2 + t * 5) * 4;
       const midX = (a.x + b.x) / 2 - 26 - t * 36 + loopX;
       const midY = (a.y + b.y) / 2 + loopY;
 
-      ctx.shadowColor = "rgba(255,140,0,0.95)";
-      ctx.shadowBlur = 28;
+      ctx.shadowColor = "rgba(255,130,40,0.7)";
+      ctx.shadowBlur = 10;
       ctx.beginPath();
       ctx.moveTo(a.x, a.y);
       ctx.quadraticCurveTo(midX, midY, b.x, b.y);
-      ctx.strokeStyle = `rgba(255,120,20,${alpha})`;
+      ctx.strokeStyle = `rgba(255,110,40,${alpha})`;
       ctx.lineWidth = width;
       ctx.stroke();
 
-      ctx.shadowColor = "rgba(255,220,120,0.95)";
-      ctx.shadowBlur = 20;
-      ctx.strokeStyle = `rgba(255,210,90,${alpha * 0.95})`;
-      ctx.lineWidth = width * 0.55;
-      ctx.stroke();
-
-      ctx.shadowColor = "rgba(255,255,255,0.95)";
-      ctx.shadowBlur = 12;
-      ctx.strokeStyle = `rgba(255,250,220,${alpha * 0.75})`;
-      ctx.lineWidth = width * 0.25;
+      ctx.shadowColor = "rgba(255,200,120,0.65)";
+      ctx.shadowBlur = 6;
+      ctx.strokeStyle = `rgba(255,180,90,${alpha * 0.55})`;
+      ctx.lineWidth = width * 0.5;
       ctx.stroke();
     }
     ctx.restore();
@@ -3431,15 +3540,22 @@ Boss erscheint.`,
         const beamX = s.x;
         const beamW = s.len || 0;
         const beamY = s.y - h / 2;
+        const pulse = 0.65 + 0.35 * Math.sin(performance.now() * 0.012);
         const grad = ctx.createLinearGradient(beamX, beamY, beamX + beamW, beamY);
-        grad.addColorStop(0, "rgba(120,255,200,0.95)");
+        grad.addColorStop(0, `rgba(160,255,220,${0.9 * pulse})`);
+        grad.addColorStop(0.4, `rgba(120,240,190,${0.75 * pulse})`);
         grad.addColorStop(1, "rgba(80,220,160,0)");
         ctx.fillStyle = grad;
         ctx.fillRect(beamX, beamY, beamW, h);
+
         ctx.globalCompositeOperation = "lighter";
-        ctx.strokeStyle = "rgba(180,255,220,0.85)";
-        ctx.lineWidth = 4;
+        ctx.strokeStyle = `rgba(220,255,240,${0.9 * pulse})`;
+        ctx.lineWidth = 5;
         ctx.strokeRect(beamX, beamY, beamW, h);
+
+        ctx.strokeStyle = `rgba(120,255,200,${0.7 * pulse})`;
+        ctx.lineWidth = 2;
+        ctx.strokeRect(beamX, beamY + h * 0.25, beamW, h * 0.5);
         ctx.globalCompositeOperation = "source-over";
         continue;
       }
