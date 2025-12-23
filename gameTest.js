@@ -631,6 +631,11 @@ const assets = {
   let scoreTauntText = "";
   let scoreTauntTimer = 0;
   let phaseMilestoneCooldown = 0;
+  let nnTauntActive = false;
+  let nnTauntText = "";
+  let nnTauntX = 0;
+  let nnTauntY = 0;
+  let nnTauntWidth = 0;
   let nextScoreTaunt = 0;
   let phaseMilestoneIndices = [];
   let phaseTextPhase = 0;
@@ -1008,6 +1013,7 @@ Boss erscheint.`,
   const PHASE_TEXT_LINE_GAP = 40;
   const PHASE_TEXT_COLOR = "rgba(140, 240, 200, 0.5)";
   const PHASE_TEXT_FONT = `600 22px ${SECONDARY_FONT}`;
+  const NN_TAUNT_SPEED = 120;
   phaseTextDone = new Array(PHASE_TEXTS.length).fill(false);
 
   const PHASE_MILESTONE_DEFS = [
@@ -1253,6 +1259,8 @@ Boss erscheint.`,
     bossTransitionActive = false;
     bossTransitionTimer = 0;
     phaseMilestoneCooldown = 0;
+    nnTauntActive = false;
+    nnTauntText = "";
 
     Object.assign(player, {
       y: WORLD_H / 2,
@@ -1311,6 +1319,8 @@ Boss erscheint.`,
     scoreTauntText = "";
     scoreTauntTimer = 0;
     phaseMilestoneCooldown = 0;
+    nnTauntActive = false;
+    nnTauntText = "";
     nextScoreTaunt = 0;
     phaseMilestoneIndices = new Array(PHASE_MILESTONE_DEFS.length).fill(0);
     scheduleNextScoreTaunt(0);
@@ -1417,16 +1427,13 @@ Boss erscheint.`,
   }
 
   function checkScoreTaunts() {
-    if (scoreTauntTimer > 0) return false;
+    if (nnTauntActive) return false;
     if (!playerName || !getHighlightInfo(playerName).isHighlight) return false;
-    if (phaseMilestoneCooldown > 0) return false;
     if (score < SCORE_TAUNT_MIN || score > SCORE_TAUNT_MAX) return false;
     if (nextScoreTaunt <= 0) scheduleNextScoreTaunt();
     if (score < nextScoreTaunt) return false;
     const pick = NN_SCORE_TAUNTS[Math.floor(Math.random() * NN_SCORE_TAUNTS.length)];
-    scoreTauntText = pick;
-    scoreTauntTimer = SCORE_TAUNT_DURATION;
-    phaseMilestoneCooldown = Math.max(phaseMilestoneCooldown, 2.5);
+    startNnTaunt(pick);
     scheduleNextScoreTaunt(score);
     return true;
   }
@@ -1600,6 +1607,28 @@ Boss erscheint.`,
         return;
       }
       setPhaseTextLine(phaseIndex, phaseTextIndex);
+    }
+  }
+
+  function startNnTaunt(text) {
+    if (!text) return;
+    nnTauntText = text;
+    nnTauntX = WORLD_W + 20;
+    nnTauntY = 140 + Math.floor(Math.random() * 5) * PHASE_TEXT_LINE_GAP;
+    ctx.save();
+    ctx.font = PHASE_TEXT_FONT;
+    nnTauntWidth = ctx.measureText(nnTauntText).width;
+    ctx.restore();
+    nnTauntActive = true;
+  }
+
+  function updateNnTaunt(dt) {
+    if (!nnTauntActive) return;
+    if (inBossFight || bossTransitionActive || pendingBossId) return;
+    nnTauntX -= NN_TAUNT_SPEED * dt;
+    if (nnTauntX + nnTauntWidth < -40) {
+      nnTauntActive = false;
+      nnTauntText = "";
     }
   }
 
@@ -2251,6 +2280,8 @@ Boss erscheint.`,
   function startBossFight(id) {
     inBossFight = true;
     currentBoss = createBoss(id);
+    nnTauntActive = false;
+    nnTauntText = "";
     currentBoss.lootTimer = 1.6;
     bossLoot.length = 0;
     bossObstacles.length = 0;
@@ -3295,6 +3326,7 @@ Boss erscheint.`,
     bgOffset -= bgScrollSpeedBase * scrollMultiplier * dt;
     if (bgOffset <= -WORLD_W) bgOffset += WORLD_W;
     updatePhaseText(dt);
+    updateNnTaunt(dt);
 
     // Keine Gravitation während Boss-Vorbereitung
     if (!pendingBossId) {
@@ -3422,6 +3454,28 @@ Boss erscheint.`,
     ctx.fillRect(boxX, boxY, boxW, boxH);
     ctx.fillStyle = "#ffffff";
     ctx.fillText(phaseTextLine, phaseTextX, phaseTextY);
+    ctx.restore();
+  }
+
+  function drawNnTaunt() {
+    if (!nnTauntActive || !nnTauntText) return;
+    if (inBossFight || bossTransitionActive || pendingBossId) return;
+
+    ctx.save();
+    ctx.font = PHASE_TEXT_FONT;
+    ctx.textBaseline = "middle";
+    const metrics = ctx.measureText(nnTauntText);
+    const textW = metrics.width;
+    const boxPadX = 12;
+    const boxPadY = 8;
+    const boxH = 28;
+    const boxW = textW + boxPadX * 2;
+    const boxX = nnTauntX - boxPadX;
+    const boxY = nnTauntY - boxH / 2;
+    ctx.fillStyle = "rgba(0,0,0,0.78)";
+    ctx.fillRect(boxX, boxY, boxW, boxH);
+    ctx.fillStyle = "#ffffff";
+    ctx.fillText(nnTauntText, nnTauntX, nnTauntY);
     ctx.restore();
   }
 
@@ -4251,6 +4305,7 @@ function drawUI() {
     beginFrame();
     drawBackground();
     drawPhaseText();
+    drawNnTaunt();
     drawTrail();
     drawPipes();
     drawBossObstacles();
