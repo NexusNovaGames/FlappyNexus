@@ -690,13 +690,13 @@ const assets = {
   const BOSS2_SCORE = 50; // Boss 2 bei 50 Punkten
   const BOSS3_SCORE = 90; // Boss 3 bei 90 Punkten
   const BOSS4_SCORE = 130; // Boss 4 bei 130 Punkten
-  const BOSS5_SCORE = 160; // Boss 5 bei 160 Punkten
-  const BOSS6_SCORE = 200; // Boss 6 bei 200 Punkten
+  const BOSS5_SCORE = 180; // Boss 5 bei 180 Punkten
+  const BOSS6_SCORE = 230; // Boss 6 bei 230 Punkten
   const SCORE_TAUNT_DURATION = 4;
   const SCORE_TAUNT_MIN = 60;
   const SCORE_TAUNT_MAX = 250;
-  const SCORE_TAUNT_STEP_MIN = 12;
-  const SCORE_TAUNT_STEP_MAX = 28;
+  const SCORE_TAUNT_STEP_MIN = 8;
+  const SCORE_TAUNT_STEP_MAX = 16;
   const PHASE_MILESTONE_COOLDOWN = 6;
   const NN_SCORE_TAUNTS = [
     "Du bist ja immer noch da...",
@@ -731,34 +731,33 @@ const assets = {
   ];
 
   const BOSS_STORIES = {
-    1: `Scope Creeper
+    1: `Boss: "Scope Creeper"
 
-„Wir schauen uns das erstmal nur grob an.“
+"Wir schauen uns das erstmal nur grob an."
 
 Ein harmloser Satz.
 Gesprochen zu Beginn von Discover.
 
 Doch irgendwo zwischen Flipchart, Whiteboard und dem ersten
-„Nur mal kurz prüfen…“
+"Nur mal kurz pr?fen..."
 begann sich etwas zu regen.
 
 Ein Gedanke wurde zu einer Frage.
 Eine Frage zu einer Anforderung.
 Eine Anforderung zu vielen.
 
-Plötzlich war er da.
+Pl?tzlich war er da.
 
 Scope Creeper.
 
-Er wächst von jedem „Könnten wir nicht auch…“
-Er nährt sich von Zeit und Budget.
-Und je länger ihr zögert, desto mehr spawnt er.
+Er w?chst von jedem "K?nnten wir nicht auch...?"
+Er n?hrt sich von Zeit und Budget.
+Und je l?nger ihr z?gert, desto mehr spawnt er.
 
 Fokus schwindet. Entscheidungen werden weich.
 
 Boss erscheint.`,
-    2: `Level 2 – Prepare
-Lord Chaos Governance
+    2: `Boss: "Lord Chaos Governance"
 
 Prepare begann mit guten Absichten.
 
@@ -766,16 +765,16 @@ Ein Projektplan.
 Viele Streams.
 Und der Satz:
 
-„Wir klären die Rollen später.“
+"Wir kl?ren die Rollen sp?ter."
 
-Doch „später“ kam nie.
+Doch "sp?ter" kam nie.
 
 Entscheidungen blieben offen.
 Verantwortlichkeiten verschwammen.
-Alles lief parallel – aber nichts zusammen.
+Alles lief parallel - aber nichts zusammen.
 
-Meetings wurden länger.
-Ergebnisse kürzer.
+Meetings wurden l?nger.
+Ergebnisse k?rzer.
 Und jeder wartete darauf, dass jemand anderes entscheidet.
 
 Aus dieser Unordnung erhob sich:
@@ -783,31 +782,30 @@ Aus dieser Unordnung erhob sich:
 Lord Chaos Governance.
 
 Er blockiert jeden Fortschritt.
-Er nährt sich von offenen Punkten.
-Und je mehr ihr abstimmt, desto stärker wird er.
+Er n?hrt sich von offenen Punkten.
+Und je mehr ihr abstimmt, desto st?rker wird er.
 
-Der Kalender füllt sich. Das Projekt steht still.
+Der Kalender f?llt sich. Das Projekt steht still.
 
 Boss erscheint.`,
-    3: `Level 3 – Explore
-Fit-to-Standard Hydra
+    3: `Boss: "Fit-to-Standard Hydra"
 
 Explore begann mit einem Ziel:
 
-„Wir orientieren uns am Standard.“
+"Wir orientieren uns am Standard."
 
 Doch dann kam der erste Gap.
 Dann ein zweiter.
 Und dann der Satz:
 
-„Das haben wir schon immer so gemacht.“
+"Das haben wir schon immer so gemacht."
 
 Mit jedem abgeschlagenen Gap wuchsen zwei neue nach.
-Workshops wurden länger.
+Workshops wurden l?nger.
 Blueprints dicker.
 Der Standard immer weiter weg.
 
-Aus Prozessen wurden Sonderfälle.
+Aus Prozessen wurden Sonderf?lle.
 Aus Entscheidungen Designs.
 Aus Einfachheit Overengineering.
 
@@ -816,31 +814,30 @@ Aus all dem kroch sie hervor:
 Die Fit-to-Standard Hydra.
 
 Sie vervielfacht Gaps.
-Sie verführt mit perfekten Lösungen.
-Und jeder Versuch, sie „sauber“ zu lösen, macht sie stärker.
+Sie verf?hrt mit perfekten L?sungen.
+Und jeder Versuch, sie "sauber" zu l?sen, macht sie st?rker.
 
 Der Standard droht zu verschwinden.
 
 Boss erscheint.`,
-    4: `Level 4 – Realize
-Migration Minotaur
+    4: `Boss: "Migration Minotaur"
 
-Realize fühlte sich kontrolliert an.
+Realize f?hlte sich kontrolliert an.
 
 Customizing stand.
 Entwicklungen liefen.
 Und jemand sagte:
 
-„Die Daten migrieren wir später.“
+"Die Daten migrieren wir sp?ter."
 
 Doch tief im System wartete bereits etwas.
 
 Versteckt im Labyrinth der Altdaten.
-Genährt von Dubletten, Lücken und Altlasten.
-Unauffällig – bis zur ersten Testmigration.
+Gen?hrt von Dubletten, L?cken und Altlasten.
+Unauff?llig - bis zur ersten Testmigration.
 
-TM1 ließ ihn kurz aufblitzen.
-TM2 weckte ihn vollständig.
+TM1 lie? ihn kurz aufblitzen.
+TM2 weckte ihn vollst?ndig.
 
 Fehler explodierten.
 Fixing-Schleifen begannen.
@@ -850,15 +847,14 @@ Aus dem Migrationslabyrinth trat hervor:
 
 Der Migration Minotaur.
 
-Er frisst saubere Zeitpläne.
+Er frisst saubere Zeitpl?ne.
 Er liebt unklare Objektketten.
-Und jeder ungeprüfte Datensatz macht ihn stärker.
+Und jeder ungepr?fte Datensatz macht ihn st?rker.
 
 Der Weg zum Go-Live wird enger.
 
 Boss erscheint.`,
-    5: `Deploy
-Cut-over Kraken
+    5: `Boss: "Cut-over Kraken"
 
 Deploy begann in Stille.
 
@@ -866,33 +862,33 @@ Systeme waren bereit.
 Jobs geplant.
 Und der Countdown lief.
 
-„Wir haben alles vorbereitet.“
+"Wir haben alles vorbereitet."
 
-Doch unter der Oberfläche bewegte sich etwas.
+Doch unter der Oberfl?che bewegte sich etwas.
 
 Viele Arme.
 Viele Systeme.
 Viele Marktpartner.
 
-Ein falscher Schritt –
-und alles gerät gleichzeitig in Bewegung.
+Ein falscher Schritt -
+und alles ger?t gleichzeitig in Bewegung.
 
 Jobs kollidieren.
-Schnittstellen reißen.
+Schnittstellen rei?en.
 Seiteneffekte schlagen dort zu, wo niemand hinsieht.
 
 Aus dem Cut-over-Fenster erhebt sich:
 
 Der Cut-over Kraken.
 
-Er kennt keinen Rückzug.
+Er kennt keinen R?ckzug.
 Er verzeiht keinen Fehler.
-Und jede Sekunde macht ihn stärker.
+Und jede Sekunde macht ihn st?rker.
 
 Keine zweite Chance. Der Go-Live steht bevor.
 
 Boss erscheint.`,
-    6: `Legacy Phantom
+    6: `Boss: "Legacy Phantom"
 
 Der Go-Live ist geschafft.
 
@@ -900,13 +896,13 @@ Systeme laufen.
 Tickets werden weniger.
 Und jemand sagt:
 
-„Zur Sicherheit lassen wir das Altsystem noch an.“
+"Zur Sicherheit lassen wir das Altsystem noch an."
 
-Niemand merkt, wie sich etwas löst.
+Niemand merkt, wie sich etwas l?st.
 
 Ein Prozess im Hintergrund.
 Ein manueller Workaround.
-Ein Bericht, der „nur dort“ noch existiert.
+Ein Bericht, der "nur dort" noch existiert.
 
 Schattenprozesse entstehen.
 Ressourcen verschwinden.
@@ -918,12 +914,15 @@ Das Legacy Phantom.
 
 Es ist schwer zu sehen.
 Es greift leise an.
-Und solange es existiert, zieht es euch zurück.
+Und solange es existiert, zieht es euch zur?ck.
 
 Die Zukunft bleibt stehen, solange die Vergangenheit lebt.
 
 Boss erscheint.`,
   };
+
+
+
 
   const PHASE_TEXTS = [
     {
@@ -1418,12 +1417,14 @@ Boss erscheint.`,
   function checkScoreTaunts() {
     if (scoreTauntTimer > 0) return false;
     if (!playerName || !getHighlightInfo(playerName).isHighlight) return false;
+    if (phaseMilestoneCooldown > 0) return false;
     if (score < SCORE_TAUNT_MIN || score > SCORE_TAUNT_MAX) return false;
     if (nextScoreTaunt <= 0) scheduleNextScoreTaunt();
     if (score < nextScoreTaunt) return false;
     const pick = NN_SCORE_TAUNTS[Math.floor(Math.random() * NN_SCORE_TAUNTS.length)];
     scoreTauntText = pick;
     scoreTauntTimer = SCORE_TAUNT_DURATION;
+    phaseMilestoneCooldown = Math.max(phaseMilestoneCooldown, 2.5);
     scheduleNextScoreTaunt(score);
     return true;
   }
@@ -3403,8 +3404,18 @@ Boss erscheint.`,
 
     ctx.save();
     ctx.font = PHASE_TEXT_FONT;
-    ctx.fillStyle = PHASE_TEXT_COLOR;
     ctx.textBaseline = "middle";
+    const metrics = ctx.measureText(phaseTextLine);
+    const textW = metrics.width;
+    const boxPadX = 12;
+    const boxPadY = 8;
+    const boxH = 28;
+    const boxW = textW + boxPadX * 2;
+    const boxX = phaseTextX - boxPadX;
+    const boxY = phaseTextY - boxH / 2;
+    ctx.fillStyle = "rgba(0,0,0,0.78)";
+    ctx.fillRect(boxX, boxY, boxW, boxH);
+    ctx.fillStyle = "#ffffff";
     ctx.fillText(phaseTextLine, phaseTextX, phaseTextY);
     ctx.restore();
   }
@@ -3827,20 +3838,20 @@ Boss erscheint.`,
 
     if (player.shieldTimer > 0 || player.shieldHits > 0) {
       ctx.strokeStyle = `rgba(120,200,255,0.8)`;
-      ctx.lineWidth = 4;
+      ctx.lineWidth = 5;
       ctx.beginPath();
-      ctx.arc(0, 0, r + 6, 0, Math.PI * 2);
+      ctx.arc(0, 0, r + 10, 0, Math.PI * 2);
       ctx.stroke();
       // kleiner Schild-Indikator oben rechts
       ctx.fillStyle = "rgba(120,200,255,0.9)";
-      ctx.fillRect(r + 6, -r - 12, 16, 10);
+      ctx.fillRect(r + 10, -r - 16, 20, 12);
     }
 
     if (player.turboTimer > 0) {
       ctx.strokeStyle = "rgba(255,170,80,0.7)";
-      ctx.lineWidth = 3;
+      ctx.lineWidth = 4;
       ctx.beginPath();
-      ctx.arc(0, 0, r + 12, 0, Math.PI * 2);
+      ctx.arc(0, 0, r + 16, 0, Math.PI * 2);
       ctx.stroke();
     }
 
