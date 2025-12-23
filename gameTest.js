@@ -51,7 +51,7 @@ document.addEventListener("DOMContentLoaded", () => {
   let viewOffsetY = 0;
   let dpr = 1;
   const FONT_LINK =
-    "https://fonts.googleapis.com/css2?family=Orbitron:wght@400;600&family=Rajdhani:wght@400;600&display=swap";
+    "https://fonts.googleapis.com/css2family=Orbitron:wght@400;600&family=Rajdhani:wght@400;600&display=swap";
   if (!document.querySelector('link[data-flappy-font]')) {
     const fontLink = document.createElement("link");
     fontLink.rel = "stylesheet";
@@ -90,7 +90,7 @@ document.addEventListener("DOMContentLoaded", () => {
     "hurensoohn",
     "wichser",
     "scheisse",
-    "scheiÃÂe",
+    "scheiße",
     "spast",
     "spasti",
     "mongo",
@@ -213,7 +213,7 @@ document.addEventListener("DOMContentLoaded", () => {
   }
 
   function getLeaderboardEntryStyle(entry) {
-    const name = entry && entry.name ? entry.name : "";
+    const name = entry && entry.name  entry.name : "";
     if (name && name.startsWith(HIGHLIGHT_PREFIX)) {
       const trimmed = name.slice(HIGHLIGHT_PREFIX.length).trim();
       if (entry && !entry.highlightColor) {
@@ -221,7 +221,7 @@ document.addEventListener("DOMContentLoaded", () => {
       }
       return {
         displayName: trimmed || "Pilot",
-        color: entry && entry.highlightColor ? entry.highlightColor : pickHighlightColor(),
+        color: entry && entry.highlightColor  entry.highlightColor : pickHighlightColor(),
       };
     }
     return { displayName: name || "Pilot", color: null };
@@ -380,7 +380,7 @@ document.addEventListener("DOMContentLoaded", () => {
     const sanitized = sanitizeName(rawValue);
     if (!sanitized) {
       if (nameErrorLabel) {
-        nameErrorLabel.textContent = "Bitte einen vernÃÂ¼nftigen Namen (2-16 Zeichen, keine Beleidigungen) eingeben.";
+        nameErrorLabel.textContent = "Bitte einen vernünftigen Namen (2-16 Zeichen, keine Beleidigungen) eingeben.";
       }
       return;
     }
@@ -398,7 +398,7 @@ document.addEventListener("DOMContentLoaded", () => {
       { key: "slowTimer", dur: DURATIONS.slow, color: "#9cff9c", label: "Zeitlupe" },
       { key: "turboTimer", dur: DURATIONS.turbo, color: "#ffb366", label: "Turbo" },
       { key: "shrinkTimer", dur: DURATIONS.shrink, color: "#8df0c3", label: "Schrumpfen" },
-      { key: "bigTimer", dur: DURATIONS.big, color: "#ff8899", label: "GroÃÂ" },
+      { key: "bigTimer", dur: DURATIONS.big, color: "#ff8899", label: "Groß" },
     ].filter(e => player[e.key] > 0);
 
     if (!effects.length) return;
@@ -633,9 +633,9 @@ const assets = {
 
   // Trail
   const trail = [];
-  const trailMaxLength = 40;
+  const trailMaxLength = 26;
   let trailSampleTimer = 0;
-  const trailSampleInterval = 0.018;
+  const trailSampleInterval = 0.03;
   let trailLoopPhase = 0;
 
   // Pipes
@@ -668,7 +668,7 @@ const assets = {
   };
 
   // Boss Triggers
-  const BOSS_INTERVAL = 5; // PrÃÂ¼fintervall
+  const BOSS_INTERVAL = 5; // Prüfintervall
   const BOSS1_SCORE = 30; // Boss 1 bei 30 Punkten
   const BOSS2_SCORE = 50; // Boss 2 bei 50 Punkten
   const BOSS3_SCORE = 90; // Boss 3 bei 90 Punkten
@@ -699,7 +699,7 @@ const assets = {
     "Die Maustaste raucht.",
     "Unaufhaltsam.",
     "Du fliegst wie ein Commit am Freitag.",
-    "Der Boss schaut schon nervoÃÂ¨s.",
+    "Der Boss schaut schon nervös.",
     "Break- Nicht heute.",
     "Noch ein Versuch, noch ein Punkt.",
     "Produktivitaetslevel: Overdrive.",
@@ -732,7 +732,7 @@ Plötzlich war er da.
 
 Scope Creeper.
 
-Er wächst von jedem „Könnten wir nicht auch…?“
+Er wächst von jedem „Könnten wir nicht auch…“
 Er nährt sich von Zeit und Budget.
 Und je länger ihr zögert, desto mehr spawnt er.
 
@@ -1087,7 +1087,7 @@ Boss erscheint.`,
   let boss5Defeated = false;
   let boss6Spawned = false;
   let boss6Defeated = false;
-  let bossStage = 0; // progressive VerstÃÂ¤rkung nach jedem Boss
+  let bossStage = 0; // progressive Verstärkung nach jedem Boss
 
   // Projectiles & Explosions
   const playerShots = [];
@@ -1120,11 +1120,11 @@ Boss erscheint.`,
       flapCount = 0;
     }
 
-    // Spin alle 25 SprÃÂ¼nge sicher auslÃÂ¶sen (random LÃÂ¤nge 3?5s)
+    // Spin alle 25 Sprünge sicher auslösen (random Länge 35s)
     if (totalFlaps > 0 && totalFlaps % 25 === 0) {
       player.spinTimer = Math.max(player.spinTimer, 3 + Math.random() * 2);
     }
-    // ZusÃÂ¤tzlich zufÃÂ¤lliger Spin alle 50 Klicks (LÃÂ¤nge 2?4s)
+    // Zusätzlich zufälliger Spin alle 50 Klicks (Länge 24s)
     if (totalFlaps > 0 && totalFlaps % 50 === 0 && Math.random() < 0.6) {
       player.spinTimer = Math.max(player.spinTimer, 2 + Math.random() * 2);
     }
@@ -1211,7 +1211,7 @@ Boss erscheint.`,
   //  Core Helpers
   // ======================================================
   function resetGame() {
-    score = TEST_BOSS3 ? Math.max(0, BOSS3_SCORE - 5) : 0;
+    score = TEST_BOSS3  Math.max(0, BOSS3_SCORE - 5) : 0;
     gameOver = false;
     gameRunning = false;
     inBossFight = false;
@@ -1412,7 +1412,7 @@ Boss erscheint.`,
 
   function wrapTextLines(text, maxWidth) {
     if (!text) return [];
-    const rawLines = String(text).split(/\r?\n/);
+    const rawLines = String(text).split(/\r\n/);
     const lines = [];
     ctx.save();
     ctx.font = `600 18px ${SECONDARY_FONT}`;
@@ -1424,7 +1424,7 @@ Boss erscheint.`,
       const words = raw.split(/\s+/);
       let line = "";
       for (const word of words) {
-        const test = line ? `${line} ${word}` : word;
+        const test = line  `${line} ${word}` : word;
         if (ctx.measureText(test).width > maxWidth && line) {
           lines.push(line);
           line = word;
@@ -1758,8 +1758,8 @@ Boss erscheint.`,
     // Invincible nur bei Ghost oder Schild-Invul-Fenster
     player.invincible = player.ghostTimer > 0 || player.shieldInvTimer > 0 || player.shieldTimer > 0;
 
-    const lockScale = player.lockTimer > 0 ? 0.65 : 1.0;
-    player.jumpStrength = player.baseJumpStrength * (player.turboTimer > 0 ? 1.1 : 1.0) * lockScale;
+    const lockScale = player.lockTimer > 0  0.65 : 1.0;
+    player.jumpStrength = player.baseJumpStrength * (player.turboTimer > 0  1.1 : 1.0) * lockScale;
 
     // Color pulse decay
     if (player.colorPulseTimer > 0) {
@@ -1807,11 +1807,11 @@ Boss erscheint.`,
       ghostChallenge = false;
     }
     const maxGapY = WORLD_H - pipeMargin - gapSize;
-    const baseY = lastGapY === null ? WORLD_H / 2 - gapSize / 2 : lastGapY;
+    const baseY = lastGapY === null  WORLD_H / 2 - gapSize / 2 : lastGapY;
     const rawTargetY = baseY + (Math.random() - 0.5) * 70;
     const maxDelta = Math.max(70, gapSize * 0.35);
     const limitedTargetY = lastGapY === null
-      ? rawTargetY
+       rawTargetY
       : Math.max(lastGapY - maxDelta, Math.min(lastGapY + maxDelta, rawTargetY));
     const gapY = Math.max(minGapY, Math.min(maxGapY, limitedTargetY));
     lastGapY = gapY;
@@ -1819,7 +1819,7 @@ Boss erscheint.`,
     pipes.push({
       x: WORLD_W + 60,
       gapY,
-      vy: (Math.random() * 10 + 8) * (Math.random() < 0.5 ? -1 : 1),
+      vy: (Math.random() * 10 + 8) * (Math.random() < 0.5  -1 : 1),
       passed: false,
     });
   }
@@ -1851,14 +1851,14 @@ Boss erscheint.`,
       const p = {
         x: WORLD_W + 30,
         gapY: pipeMargin + Math.random() * Math.max(40, WORLD_H - pipeMargin * 2 - Math.max(pipeGap, minPipeGap)),
-        vy: (Math.random() < 0.5 ? 1 : -1) * 12,
+        vy: (Math.random() < 0.5  1 : -1) * 12,
         passed: false,
       };
       pipes.push(p);
       spawnLootbox(p);
     }
 
-    const speedMult = player.slowTimer > 0 ? 0.5 : 1.0;
+    const speedMult = player.slowTimer > 0  0.5 : 1.0;
     const spd = pipeSpeed * speedMult;
 
     for (let i = pipes.length - 1; i >= 0; i--) {
@@ -1872,7 +1872,7 @@ Boss erscheint.`,
 
       if (!p.passed && p.x + pipeWidth < player.x - player.radius) {
         p.passed = true;
-        const add = player.doubleTimer > 0 ? 2 : 1;
+        const add = player.doubleTimer > 0  2 : 1;
         score += add;
         const hueStep = Math.floor(score / 10);
         if (hueStep > lastScoreHueStep) {
@@ -1895,8 +1895,8 @@ Boss erscheint.`,
   }
 
   function updateLootboxes(dt) {
-    const speedMult = player.slowTimer > 0 ? 0.5 : 1.0;
-    const spd = pipeSpeed * speedMult * (inBossFight ? 1.2 : 1.0);
+    const speedMult = player.slowTimer > 0  0.5 : 1.0;
+    const spd = pipeSpeed * speedMult * (inBossFight  1.2 : 1.0);
     lootSwayTimer += dt;
 
     for (let i = lootboxes.length - 1; i >= 0; i--) {
@@ -1985,7 +1985,7 @@ Boss erscheint.`,
       if (player.ammoRapid <= 0) player.weaponMode = "normal";
     } else if (player.weaponMode === "salvo" && player.ammoSalvo > 0) {
       player.ammoSalvo--;
-      // 360ÃÂ° Salvo: 8 Projektile rundherum
+      // 360° Salvo: 8 Projektile rundherum
       for (let k = 0; k < 8; k++) {
         const a = (Math.PI * 2 * k) / 8;
         shots.push({ angle: a, speed: 440, size: 7 });
@@ -2016,7 +2016,7 @@ Boss erscheint.`,
     const vx = -Math.cos(angle) * scaledSpeed;
     const vy = Math.sin(angle) * scaledSpeed;
     const isBug = boss && boss.id === 3;
-    const projectileType = isBug ? "bug" : Math.random() < 0.25 ? "shard" : Math.random() < 0.5 ? "seeker" : "orb";
+    const projectileType = isBug  "bug" : Math.random() < 0.25  "shard" : Math.random() < 0.5  "seeker" : "orb";
     bossShots.push({
       x: boss.x - boss.width / 2,
       y: boss.y,
@@ -2024,9 +2024,9 @@ Boss erscheint.`,
       vy,
       life: 5,
       age: 0,
-      size: isBug ? BUG_PROJECTILE_SIZE : 8 + Math.random() * 4,
+      size: isBug  BUG_PROJECTILE_SIZE : 8 + Math.random() * 4,
       type: projectileType,
-      img: projectileType === "bug" ? assets.bug : null,
+      img: projectileType === "bug"  assets.bug : null,
     });
   }
 
@@ -2147,7 +2147,7 @@ Boss erscheint.`,
         maxHp: Math.round(460 * (1 + bossStage * 0.25)),
         shotTimer: 0,
         shotInterval: 0.8,
-        img: assets.boss6 && assets.boss6.complete ? assets.boss6 : assets.boss3 && assets.boss3.complete ? assets.boss3 : assets.boss2,
+        img: assets.boss6 && assets.boss6.complete  assets.boss6 : assets.boss3 && assets.boss3.complete  assets.boss3 : assets.boss2,
         t: 0,
         attackMode: 0,
         attackModeTimer: 0,
@@ -2174,7 +2174,7 @@ Boss erscheint.`,
       maxHp: Math.round(180 * (1 + bossStage * 0.12)),
       shotTimer: 0,
       shotInterval: (0.65 / (1 + bossStage * 0.1)) * 2.5,
-      img: assets.boss3 && assets.boss3.complete ? assets.boss3 : assets.boss2,
+      img: assets.boss3 && assets.boss3.complete  assets.boss3 : assets.boss2,
       t: 0,
       attackMode: 0,
       attackModeTimer: 0,
@@ -2244,7 +2244,7 @@ Boss erscheint.`,
       score += 30;
       if (!checkPhaseMilestones()) checkScoreTaunts();
       currentBackground = "bg2";
-      finalCongratsTimer = 8; // GlÃÂ¼ckwunschbanner anzeigen
+      finalCongratsTimer = 8; // Glückwunschbanner anzeigen
     } else if (id === 4) {
       boss4Defeated = true;
       score += 40;
@@ -2266,11 +2266,11 @@ Boss erscheint.`,
     }
 
     const postBossReward =
-      id === 2 ? "shield" :
-      id === 3 ? "spread" :
-      id === 4 ? "rapid" :
-      id === 5 ? "salvo" :
-      id === 6 ? "bossshield" :
+      id === 2  "shield" :
+      id === 3  "spread" :
+      id === 4  "rapid" :
+      id === 5  "salvo" :
+      id === 6  "bossshield" :
       null;
     if (postBossReward) applyPowerup(postBossReward);
 
@@ -2291,7 +2291,7 @@ Boss erscheint.`,
     if (id === 6) {
       gameWon = true;
       gameRunning = true;
-      gameOver = false; // Weiterfliegen fÃÂ¼r Highscore
+      gameOver = false; // Weiterfliegen für Highscore
     }
   }
 
@@ -2349,7 +2349,7 @@ Boss erscheint.`,
 
     if (boss.id === 4) {
       boss.phaseTimer += dt;
-      const hpRatio = boss.maxHp > 0 ? boss.hp / boss.maxHp : 0;
+      const hpRatio = boss.maxHp > 0  boss.hp / boss.maxHp : 0;
       if (boss.phase === 1 && hpRatio <= 0.7) {
         boss.phase = 2;
         boss.phaseTimer = 0;
@@ -2398,7 +2398,7 @@ Boss erscheint.`,
     if (boss.id === 3) {
       if (!Number.isFinite(boss.phase)) boss.phase = 1;
       boss.phaseTimer += dt;
-      const hpRatio = boss.maxHp > 0 ? boss.hp / boss.maxHp : 0;
+      const hpRatio = boss.maxHp > 0  boss.hp / boss.maxHp : 0;
       if (boss.phase === 1 && hpRatio <= 0.7) {
         boss.phase = 2;
         boss.phaseTimer = 0;
@@ -2430,7 +2430,7 @@ Boss erscheint.`,
       boss.flipTimer += dt;
       if (boss.flipTimer > 2.4) {
         boss.flipTimer = 0;
-        boss.flipSide = boss.flipSide === -1 ? 1 : -1;
+        boss.flipSide = boss.flipSide === -1  1 : -1;
       }
 
     boss.shotTimer += dt;
@@ -2506,7 +2506,7 @@ Boss erscheint.`,
                 gapY: gy,
                 gap: gap,
                 speed: 190,
-                vy: (Math.random() < 0.5 ? 50 : -50),
+                vy: (Math.random() < 0.5  50 : -50),
               });
             }
           }
@@ -2572,7 +2572,7 @@ Boss erscheint.`,
               gapY: gy,
               gap: gap,
               speed: 230,
-              vy: (Math.random() < 0.5 ? 60 : -60),
+              vy: (Math.random() < 0.5  60 : -60),
             });
           }
         }
@@ -2588,7 +2588,7 @@ Boss erscheint.`,
         shootBossProjectile(boss, 0, 600 + bossStage * 20);
         if (boss.id === 3) {
           // abgeschwaechte 360 Grad Parry-Welle
-          const ringCount = boss.phase >= 2 ? 4 : 3;
+          const ringCount = boss.phase >= 2  4 : 3;
           for (let k = 0; k < ringCount; k++) {
             const a = (Math.PI * 2 * k) / ringCount;
             shootBossProjectile(boss, a, 360 + bossStage * 8);
@@ -2608,17 +2608,17 @@ Boss erscheint.`,
         boss.beamTimer = 0;
       } else if (boss.attackMode === 4 && (boss.id === 2 || boss.id === 3)) {
         // Passierbare Saeulen fuer Boss 2 & 3 (breiteres Gap, wenige Hindernisse)
-        const maxObs = boss.id === 3 ? (boss.phase >= 2 ? 3 : 2) : 2;
+        const maxObs = boss.id === 3  (boss.phase >= 2  3 : 2) : 2;
         if (bossObstacles.length < maxObs) {
-          const gap = boss.id === 3 ? (boss.phase >= 2 ? 380 : 460) : 380;
+          const gap = boss.id === 3  (boss.phase >= 2  380 : 460) : 380;
           const gyBase = player.y - gap * 0.5;
           const gy = Math.max(80, Math.min(WORLD_H - gap - 80, gyBase + (Math.random() - 0.5) * 140));
           bossObstacles.push({
             x: WORLD_W + 40,
             gapY: gy,
             gap: gap,
-            speed: boss.id === 3 ? (boss.phase >= 2 ? 170 : 130) : 130,
-            vy: boss.id === 3 ? (Math.random() < 0.5 ? (boss.phase >= 2 ? 45 : 25) : (boss.phase >= 2 ? -45 : -25)) : 0,
+            speed: boss.id === 3  (boss.phase >= 2  170 : 130) : 130,
+            vy: boss.id === 3  (Math.random() < 0.5  (boss.phase >= 2  45 : 25) : (boss.phase >= 2  -45 : -25)) : 0,
           });
         }
       } else if (boss.attackMode === 5 && boss.id === 3) {
@@ -2626,14 +2626,14 @@ Boss erscheint.`,
         if (boss.phase < 2) {
           shootBossProjectile(boss, 0, 520);
         } else {
-          const count = boss.phase >= 3 ? 8 : 6;
+          const count = boss.phase >= 3  8 : 6;
           for (let k = 0; k < count; k++) {
             const a = -0.28 + 0.08 * k + Math.sin(boss.t * 2) * 0.1;
-            shootBossProjectile(boss, a, boss.phase >= 3 ? 460 : 420);
+            shootBossProjectile(boss, a, boss.phase >= 3  460 : 420);
           }
           for (let k = 0; k < count; k++) {
             const a = (Math.PI * 2 * k) / count + boss.t * 0.5;
-            shootBossProjectile(boss, a, boss.phase >= 3 ? 380 : 340);
+            shootBossProjectile(boss, a, boss.phase >= 3  380 : 340);
           }
         }
       } else if (boss.attackMode === 6 && boss.id === 3) {
@@ -2641,12 +2641,12 @@ Boss erscheint.`,
         if (boss.phase < 2) {
           shootBossProjectile(boss, 0, 520);
         } else {
-          const rows = boss.phase >= 3 ? 5 : 4;
+          const rows = boss.phase >= 3  5 : 4;
           for (let k = 0; k < rows; k++) {
             bossShots.push({
               x: WORLD_W + 40,
               y: 120 + k * (WORLD_H - 240) / (rows - 1),
-              vx: -(boss.phase >= 3 ? 480 : 420) * PROJECTILE_SPEED_SCALE,
+              vx: -(boss.phase >= 3  480 : 420) * PROJECTILE_SPEED_SCALE,
               vy: Math.sin(boss.t * 2 + k) * 40 * PROJECTILE_SPEED_SCALE,
               life: 4,
               age: 0,
@@ -2675,13 +2675,13 @@ Boss erscheint.`,
             maxHp: BUG_BOMB_HP,
             explodeAt: 1 + Math.random() * 2,
           });
-          boss.bigBugCooldown = boss.phase >= 3 ? 0.7 : 0.9;
+          boss.bigBugCooldown = boss.phase >= 3  0.7 : 0.9;
         }
       } else if (boss.attackMode === 8 && boss.id === 3) {
         // Cuphead-Style: Slicer Sweep
         if (boss.phase >= 2 && boss.slicerCooldown <= 0) {
-          const count = boss.phase >= 3 ? 3 : 2;
-          const speed = (boss.phase >= 3 ? 520 : 460) * PROJECTILE_SPEED_SCALE;
+          const count = boss.phase >= 3  3 : 2;
+          const speed = (boss.phase >= 3  520 : 460) * PROJECTILE_SPEED_SCALE;
           for (let k = 0; k < count; k++) {
             bossShots.push({
               x: boss.x - boss.width / 2,
@@ -2694,7 +2694,7 @@ Boss erscheint.`,
               type: "slicer",
             });
           }
-          boss.slicerCooldown = boss.phase >= 3 ? 0.8 : 1.1;
+          boss.slicerCooldown = boss.phase >= 3  0.8 : 1.1;
         }
       } else if (boss.attackMode === 9 && boss.id === 3) {
         // Cuphead-Style: Mine Pods
@@ -2721,8 +2721,8 @@ Boss erscheint.`,
         boss.machineGun = true;
       } else if (boss.attackMode === 4 && boss.id >= 5) {
         const speed = 520 * PROJECTILE_SPEED_SCALE;
-        const count = boss.id === 6 ? 6 : 5;
-        const spread = boss.id === 6 ? 0.5 : 0.4;
+        const count = boss.id === 6  6 : 5;
+        const spread = boss.id === 6  0.5 : 0.4;
         for (let k = 0; k < count; k++) {
           const a = -spread / 2 + (spread * k) / (count - 1);
           bossShots.push({
@@ -2773,11 +2773,11 @@ Boss erscheint.`,
             size: 18,
             type: "lock",
           });
-          boss.lockShotTimer = boss.id === 6 ? 0.9 : 1.1;
+          boss.lockShotTimer = boss.id === 6  0.9 : 1.1;
         }
       } else if (boss.attackMode === 6 && boss.id >= 5) {
-        const maxObs = boss.id === 6 ? 4 : 3;
-        const gap = boss.id === 6 ? 240 : 280;
+        const maxObs = boss.id === 6  4 : 3;
+        const gap = boss.id === 6  240 : 280;
         if (bossObstacles.length < maxObs) {
           const gyBase = player.y - gap * 0.5;
           const gy = Math.max(70, Math.min(WORLD_H - gap - 70, gyBase + (Math.random() - 0.5) * 140));
@@ -2785,12 +2785,12 @@ Boss erscheint.`,
             x: WORLD_W + 40,
             gapY: gy,
             gap: gap,
-            speed: boss.id === 6 ? 230 : 210,
-            vy: boss.id === 6 ? (Math.random() < 0.5 ? 60 : -60) : 0,
+            speed: boss.id === 6  230 : 210,
+            vy: boss.id === 6  (Math.random() < 0.5  60 : -60) : 0,
           });
         }
       } else if (boss.attackMode === 7 && boss.id >= 5) {
-        const ringCount = boss.id === 6 ? 10 : 8;
+        const ringCount = boss.id === 6  10 : 8;
         for (let k = 0; k < ringCount; k++) {
           const a = (Math.PI * 2 * k) / ringCount + boss.t * 0.25;
           shootBossProjectile(boss, a, 420 + bossStage * 10);
@@ -2851,12 +2851,12 @@ Boss erscheint.`,
       }
     }
 
-    // Beam damage (deutlich abgeschwÃÂ¤cht, Ticks alle 0.6s)
+    // Beam damage (deutlich abgeschwächt, Ticks alle 0.6s)
     if (boss.beamState === "fire") {
       const beamX = boss.x - boss.width / 2;
       const beamW = WORLD_W;
       const beamY = boss.y - 50;
-      const beamH = boss.id === 3 ? 120 : 80;
+      const beamH = boss.id === 3  120 : 80;
       if (
         player.x + player.radius > beamX - beamW &&
         player.x - player.radius < beamX &&
@@ -2876,11 +2876,11 @@ Boss erscheint.`,
     if (boss.attackModeTimer > 6) {
       boss.attackModeTimer = 0;
       const maxMode =
-        boss.id === 6 ? 9 :
-        boss.id === 5 ? 8 :
-        boss.id === 4 ? 10 :
-        boss.id === 3 ? (boss.phase >= 3 ? 10 : boss.phase >= 2 ? 9 : 7) :
-        boss.id === 2 ? 6 : 3;
+        boss.id === 6  9 :
+        boss.id === 5  8 :
+        boss.id === 4  10 :
+        boss.id === 3  (boss.phase >= 3  10 : boss.phase >= 2  9 : 7) :
+        boss.id === 2  6 : 3;
       boss.attackMode = (boss.attackMode + 1) % maxMode;
     }
 
@@ -2888,15 +2888,15 @@ Boss erscheint.`,
     boss.lootTimer -= dt;
     if (boss.lootTimer <= 0) {
       const base =
-        boss.id >= 5 ? 1.8 :
-        boss.id === 4 ? 2.2 :
-        boss.id === 3 ? 1.4 :
+        boss.id >= 5  1.8 :
+        boss.id === 4  2.2 :
+        boss.id === 3  1.4 :
         3.2;
       boss.lootTimer = base + Math.random() * 1.0;
       let lootType = randomBossPowerup(boss.id);
       if (boss.id === 3) {
         const r = Math.random();
-        lootType = r < 0.35 ? "bossshield" : r < 0.5 ? "bossheal" : r < 0.7 ? "salvo" : r < 0.85 ? "spread" : "rapid";
+        lootType = r < 0.35  "bossshield" : r < 0.5  "bossheal" : r < 0.7  "salvo" : r < 0.85  "spread" : "rapid";
       }
       const drop = {
         x: boss.x - boss.width / 2 - 40,
@@ -2909,7 +2909,7 @@ Boss erscheint.`,
       };
       bossLoot.push(drop);
       if ((boss.id === 3 && Math.random() < 0.35) || (boss.id >= 4 && Math.random() < 0.25)) {
-        const extraType = Math.random() < 0.6 ? "bossshield" : "bossheal";
+        const extraType = Math.random() < 0.6  "bossshield" : "bossheal";
         bossLoot.push({ ...drop, type: extraType, y: boss.y + (Math.random() * 160 - 80) });
       }
     }
@@ -2917,7 +2917,7 @@ Boss erscheint.`,
     // Boss loot update
     for (let i = bossLoot.length - 1; i >= 0; i--) {
       const l = bossLoot[i];
-      const bossSpeedBoost = inBossFight ? 1.6 : 0.8;
+      const bossSpeedBoost = inBossFight  1.6 : 0.8;
       l.x += (l.vx || 0) * dt;
       l.x -= pipeSpeed * bossSpeedBoost * dt;
       const dx = player.x - l.x;
@@ -3009,7 +3009,7 @@ Boss erscheint.`,
       const dx = b.x - player.x;
       const dy = b.y - player.y;
       const dist = Math.sqrt(dx * dx + dy * dy);
-      const hitRadius = Number.isFinite(b.size) ? b.size : 0;
+      const hitRadius = Number.isFinite(b.size)  b.size : 0;
       if (dist < player.radius + hitRadius && !player.invincible) {
         if (b.type === "lock") {
           player.lockTimer = Math.max(player.lockTimer, 1.4);
@@ -3046,10 +3046,10 @@ Boss erscheint.`,
         continue;
       }
       const isBeam = s.type === "beam";
-      const beamX = isBeam ? s.x : 0;
-      const beamY = isBeam ? s.y - (s.height || 20) / 2 : 0;
-      const beamW = isBeam ? (s.len || 0) : 0;
-      const beamH = isBeam ? (s.height || 20) : 0;
+      const beamX = isBeam  s.x : 0;
+      const beamY = isBeam  s.y - (s.height || 20) / 2 : 0;
+      const beamW = isBeam  (s.len || 0) : 0;
+      const beamH = isBeam  (s.height || 20) : 0;
       for (let j = bossShots.length - 1; j >= 0; j--) {
         const b = bossShots[j];
         if (!b) {
@@ -3099,8 +3099,8 @@ Boss erscheint.`,
         bossObstacles.splice(i, 1);
         continue;
       }
-      const gap = Number.isFinite(o.gap) ? o.gap : pipeGap;
-      const speed = Number.isFinite(o.speed) ? o.speed : pipeSpeed;
+      const gap = Number.isFinite(o.gap)  o.gap : pipeGap;
+      const speed = Number.isFinite(o.speed)  o.speed : pipeSpeed;
       o.x -= speed * dt;
       if (o.vy) {
         o.gapY += o.vy * dt;
@@ -3234,19 +3234,19 @@ Boss erscheint.`,
         startBossFight(pendingBossId);
         pendingBossId = null;
       }
-      // wÃÂ¤hrend der Transition keine Welt-Updates
+      // während der Transition keine Welt-Updates
       return;
     }
 
-    const scrollMultiplier = player.slowTimer > 0 ? 0.45 : 1.0;
+    const scrollMultiplier = player.slowTimer > 0  0.45 : 1.0;
     bgOffset -= bgScrollSpeedBase * scrollMultiplier * dt;
     if (bgOffset <= -WORLD_W) bgOffset += WORLD_W;
     updatePhaseText(dt);
 
-    // Keine Gravitation wÃÂ¤hrend Boss-Vorbereitung
+    // Keine Gravitation während Boss-Vorbereitung
     if (!pendingBossId) {
-      const slowFallScale = player.slowTimer > 0 ? 0.8 : 1.0;
-      const grav = (player.turboTimer > 0 ? player.gravity * 0.85 : player.gravity) * slowFallScale;
+      const slowFallScale = player.slowTimer > 0  0.8 : 1.0;
+      const grav = (player.turboTimer > 0  player.gravity * 0.85 : player.gravity) * slowFallScale;
       player.vy += grav * dt;
       player.y += player.vy * dt;
     } else {
@@ -3254,7 +3254,7 @@ Boss erscheint.`,
       updatePendingBossStory(dt);
     }
 
-    const targetRot = Math.max(-0.5, Math.min(0.7, player.vy / 700));
+    const targetRot = Math.max(-0.35, Math.min(0.6, player.vy / 700));
     player.rotation += (targetRot - player.rotation) * dt * 7;
 
     if (player.spinTimer > 0) {
@@ -3327,7 +3327,7 @@ Boss erscheint.`,
   function drawBackground() {
     let img = assets.bg1;
     if (inBossFight) {
-      img = getBossBackground(currentBoss ? currentBoss.id : null);
+      img = getBossBackground(currentBoss  currentBoss.id : null);
     } else if (bossTransitionActive || pendingBossId) {
       img = getBossBackground(pendingBossId);
     }
@@ -3431,32 +3431,31 @@ Boss erscheint.`,
   function drawTrail() {
     if (trail.length < 2) return;
     ctx.save();
-    ctx.globalCompositeOperation = "screen";
+    ctx.globalCompositeOperation = "source-over";
 
     for (let i = 0; i < trail.length - 1; i++) {
       const a = trail[i];
       const b = trail[i + 1];
       const t = i / (trail.length - 1);
-      const alpha = (1 - t) * 0.55;
-      const width = 14 * (1 - t) + 4;
+      const alpha = (1 - t) * 0.45;
+      const width = 12 * (1 - t) + 3;
       const loopX = Math.sin(trailLoopPhase + t * 4) * 14;
       const loopY = Math.cos(trailLoopPhase * 1.2 + t * 5) * 4;
       const midX = (a.x + b.x) / 2 - 26 - t * 36 + loopX;
       const midY = (a.y + b.y) / 2 + loopY;
 
-      ctx.shadowColor = "rgba(255,130,40,0.7)";
-      ctx.shadowBlur = 10;
+      ctx.shadowColor = "rgba(255,120,60,0.35)";
+      ctx.shadowBlur = 4;
       ctx.beginPath();
       ctx.moveTo(a.x, a.y);
       ctx.quadraticCurveTo(midX, midY, b.x, b.y);
-      ctx.strokeStyle = `rgba(255,110,40,${alpha})`;
+      ctx.strokeStyle = `rgba(255,110,50,${alpha})`;
       ctx.lineWidth = width;
       ctx.stroke();
 
-      ctx.shadowColor = "rgba(255,200,120,0.65)";
-      ctx.shadowBlur = 6;
-      ctx.strokeStyle = `rgba(255,180,90,${alpha * 0.55})`;
-      ctx.lineWidth = width * 0.5;
+      ctx.shadowBlur = 0;
+      ctx.strokeStyle = `rgba(255,170,90,${alpha * 0.4})`;
+      ctx.lineWidth = width * 0.45;
       ctx.stroke();
     }
     ctx.restore();
@@ -3492,7 +3491,7 @@ Boss erscheint.`,
     ctx.shadowColor = "#ff6fbf";
     ctx.shadowBlur = 12;
     for (const o of bossObstacles) {
-      const gap = Number.isFinite(o.gap) ? o.gap : pipeGap;
+      const gap = Number.isFinite(o.gap)  o.gap : pipeGap;
       const bottomY = Math.floor(o.gapY + gap);
       const bottomH = WORLD_H - bottomY + 60;
       ctx.fillRect(o.x, 0, pipeWidth, o.gapY);
@@ -3583,7 +3582,7 @@ Boss erscheint.`,
     ctx.save();
     ctx.translate(b.x, b.y);
     const wobble = 1 + Math.sin(b.t * 2) * 0.04;
-    const rotAmp = b.id === 1 ? Math.PI / 12 : Math.PI / 4;
+    const rotAmp = b.id === 1  Math.PI / 12 : Math.PI / 4;
     const rot = Math.sin(b.t * 1.3) * rotAmp;
     ctx.scale(b.flipSide || 1, 1);
     ctx.rotate(rot);
@@ -3620,9 +3619,9 @@ Boss erscheint.`,
       const beamX = b.x - b.width / 2;
       const beamW = WORLD_W;
       const beamY = b.y - 50;
-      const beamH = b.id === 3 ? 120 : 80;
+      const beamH = b.id === 3  120 : 80;
       ctx.save();
-      ctx.globalAlpha = b.beamState === "charge" ? 0.5 : 0.9;
+      ctx.globalAlpha = b.beamState === "charge"  0.5 : 0.9;
       const grad = ctx.createLinearGradient(beamX - beamW, beamY, beamX, beamY);
       grad.addColorStop(0, "rgba(90,180,255,0)");
       grad.addColorStop(1, "rgba(90,180,255,1)");
@@ -3643,11 +3642,11 @@ Boss erscheint.`,
     ctx.save();
     for (const s of bossShots) {
       if (!s || !Number.isFinite(s.x) || !Number.isFinite(s.y)) continue;
-      const life = Number.isFinite(s.life) && s.life > 0 ? s.life : 1;
-      const age = Number.isFinite(s.age) ? s.age : 0;
+      const life = Number.isFinite(s.life) && s.life > 0  s.life : 1;
+      const age = Number.isFinite(s.age)  s.age : 0;
       const alpha = Math.max(0.2, 1 - age / life);
       if ((s.type === "bug" || s.type === "bugBomb") && s.img && s.img.complete && s.img.naturalWidth > 0) {
-        const size = Number.isFinite(s.size) ? s.size : BUG_PROJECTILE_SIZE;
+        const size = Number.isFinite(s.size)  s.size : BUG_PROJECTILE_SIZE;
         ctx.globalAlpha = Math.max(0.4, alpha);
         ctx.drawImage(s.img, s.x - size / 2, s.y - size / 2, size, size);
         if (s.type === "bugBomb") {
@@ -3675,18 +3674,18 @@ Boss erscheint.`,
         ctx.globalAlpha = 1;
         continue;
       }
-      const size = Number.isFinite(s.size) ? s.size : 6;
+      const size = Number.isFinite(s.size)  s.size : 6;
       const grad = ctx.createRadialGradient(s.x, s.y, 0, s.x, s.y, size * 1.8);
       const color =
-        s.type === "shard" ? "#ff99cc" :
-        s.type === "seeker" ? "#88ffda" :
-        s.type === "lock" ? "#ff5ad9" :
-        s.type === "delay" ? "#ffd166" :
-        s.type === "parallel" ? "#7dd3ff" :
-        s.type === "warning" ? "#ffb347" :
-        s.type === "add" ? "#a0ffb0" :
-        s.type === "slicer" ? "#b4ff7a" :
-        s.type === "mine" ? "#ff9b7a" :
+        s.type === "shard"  "#ff99cc" :
+        s.type === "seeker"  "#88ffda" :
+        s.type === "lock"  "#ff5ad9" :
+        s.type === "delay"  "#ffd166" :
+        s.type === "parallel"  "#7dd3ff" :
+        s.type === "warning"  "#ffb347" :
+        s.type === "add"  "#a0ffb0" :
+        s.type === "slicer"  "#b4ff7a" :
+        s.type === "mine"  "#ff9b7a" :
         "#ffcc66";
       grad.addColorStop(0, `${color}aa`);
       grad.addColorStop(1, `${color}00`);
@@ -3783,11 +3782,11 @@ Boss erscheint.`,
 
     // Waffen-Indikator
     if (player.weaponMode !== "normal") {
-      ctx.fillStyle = player.weaponMode === "rapid" ? "#ffc878" : player.weaponMode === "spread" ? "#c6b5ff" : "#7fe3ff";
+      ctx.fillStyle = player.weaponMode === "rapid"  "#ffc878" : player.weaponMode === "spread"  "#c6b5ff" : "#7fe3ff";
       ctx.font = `600 12px ${SECONDARY_FONT}`;
       ctx.textAlign = "right";
       ctx.textBaseline = "top";
-      const label = player.weaponMode === "rapid" ? `Schnell (${player.ammoRapid})` : player.weaponMode === "spread" ? `Streuung (${player.ammoSpread})` : `Salve (${player.ammoSalvo})`;
+      const label = player.weaponMode === "rapid"  `Schnell (${player.ammoRapid})` : player.weaponMode === "spread"  `Streuung (${player.ammoSpread})` : `Salve (${player.ammoSalvo})`;
       ctx.fillText(label, -r - 6, -r - 14);
     }
 
@@ -3894,23 +3893,23 @@ function drawUI() {
       const totalHeight = entries.length * LEADERBOARD_ENTRY_HEIGHT;
       const visibleRows = Math.ceil(listHeight / LEADERBOARD_ENTRY_HEIGHT);
       const useScroll = entries.length > visibleRows;
-      const scroll = useScroll ? leaderboardScrollOffset % totalHeight : 0;
-      const startIdx = useScroll ? Math.floor(scroll / LEADERBOARD_ENTRY_HEIGHT) : 0;
-      const offsetY = useScroll ? scroll % LEADERBOARD_ENTRY_HEIGHT : 0;
-      const rowsToDraw = useScroll ? visibleRows + 2 : entries.length;
+      const scroll = useScroll  leaderboardScrollOffset % totalHeight : 0;
+      const startIdx = useScroll  Math.floor(scroll / LEADERBOARD_ENTRY_HEIGHT) : 0;
+      const offsetY = useScroll  scroll % LEADERBOARD_ENTRY_HEIGHT : 0;
+      const rowsToDraw = useScroll  visibleRows + 2 : entries.length;
 
       for (let i = 0; i < rowsToDraw; i++) {
-        const entryIndex = useScroll ? (startIdx + i) % entries.length : i;
+        const entryIndex = useScroll  (startIdx + i) % entries.length : i;
         const entry = entries[entryIndex];
         const rank = entryIndex + 1;
         const rowCenter =
           listY + i * LEADERBOARD_ENTRY_HEIGHT - offsetY + LEADERBOARD_ENTRY_HEIGHT / 2;
 
-        ctx.fillStyle = rank <= 3 ? "rgba(255,211,107,0.12)" : "rgba(255,255,255,0.025)";
+        ctx.fillStyle = rank <= 3  "rgba(255,211,107,0.12)" : "rgba(255,255,255,0.025)";
         ctx.fillRect(12, rowCenter - 14, listWidth - 4, LEADERBOARD_ENTRY_HEIGHT - 2);
 
         const style = getLeaderboardEntryStyle(entry);
-        const baseColor = style.color || (rank <= 3 ? "#ffd36b" : "#e8f6ff");
+        const baseColor = style.color || (rank <= 3  "#ffd36b" : "#e8f6ff");
         ctx.save();
         if (rank <= 3) {
           ctx.shadowColor = baseColor;
@@ -3964,14 +3963,14 @@ function drawUI() {
   ctx.fillStyle = "rgba(255,255,255,0.2)";
   ctx.fillRect(hudLeft, hpBarY, hpBarW, hpBarH);
   const hpRatio = player.hp / player.maxHp;
-  ctx.fillStyle = hpRatio > 0.5 ? "#8bff9c" : hpRatio > 0.25 ? "#ffd966" : "#ff8888";
+  ctx.fillStyle = hpRatio > 0.5  "#8bff9c" : hpRatio > 0.25  "#ffd966" : "#ff8888";
   ctx.fillRect(hudLeft, hpBarY, hpBarW * Math.max(0, Math.min(1, hpRatio)), hpBarH);
   ctx.strokeStyle = "#fff";
   ctx.strokeRect(hudLeft, hpBarY, hpBarW, hpBarH);
 
   const armorY = hpBarY + hpBarH + 24;
   const maxShield = player.maxHp * SHIELD_MAX_RATIO;
-      const armorRatio = maxShield > 0 ? Math.min(1, player.shieldCharge / maxShield) : 0;
+      const armorRatio = maxShield > 0  Math.min(1, player.shieldCharge / maxShield) : 0;
   ctx.fillStyle = "#bfeaff";
   ctx.fillText("Rüstung", hudLeft, armorY - 14);
   ctx.fillStyle = "rgba(191,234,255,0.2)";
@@ -4035,10 +4034,10 @@ function drawUI() {
     ctx.fillText("LEERTASTE / TAP zum Start", WORLD_W / 2, startButtonRect.y - 34);
 
     const effectCards = [
-      { title: "GEIST", desc: "durch SÃÂ¤ulen gleiten", color: "#92f4ff" },
+      { title: "GEIST", desc: "durch Säulen gleiten", color: "#92f4ff" },
       { title: "SCHILD", desc: "blockt Treffer", color: "#8fb6ff" },
-      { title: "DOPPEL", desc: "+2 Punkte pro SÃÂ¤ule", color: "#ffe066" },
-      { title: "ZEITLUPE", desc: "SÃÂ¤ulen halb so schnell", color: "#9cff9c" },
+      { title: "DOPPEL", desc: "+2 Punkte pro Säule", color: "#ffe066" },
+      { title: "ZEITLUPE", desc: "Säulen halb so schnell", color: "#9cff9c" },
       { title: "TURBO", desc: "Hochsprung", color: "#ffb366" },
       { title: "SCHRUMPF", desc: "hitbox schrumpft", color: "#8df0c3" },
       { title: "GROSS", desc: "fieser Debuff", color: "#ff8899" },
@@ -4095,9 +4094,9 @@ function drawUI() {
     ctx.fillRect(WORLD_W / 2 - 220, 40, 440, 94);
     ctx.fillStyle = "#d0f0ff";
     ctx.font = `600 28px ${PRIMARY_FONT}`;
-    const congratsTitle = boss6Defeated ? "Herzlichen Glückwunsch!" : "Stark! Weiter geht's.";
+    const congratsTitle = boss6Defeated  "Herzlichen Glückwunsch!" : "Stark! Weiter geht's.";
     const congratsLine = boss6Defeated
-      ? "Alle Bosse bezwungen - jetzt zählt nur noch dein Highscore."
+       "Alle Bosse bezwungen - jetzt zählt nur noch dein Highscore."
       : "Boss 6 wartet: LEGACY OVERLORD kommt.";
     ctx.fillText(congratsTitle, WORLD_W / 2, 78);
     ctx.font = `600 18px ${SECONDARY_FONT}`;
@@ -4123,7 +4122,7 @@ function drawUI() {
       ctx.fillText("Du hast es geschafft!", WORLD_W / 2, WORLD_H / 2 - 140);
       ctx.font = `600 24px ${SECONDARY_FONT}`;
       const winLine = boss6Defeated
-        ? "Alle sechs Bosse liegen hinter dir - jetzt beginnt der Marathon."
+         "Alle sechs Bosse liegen hinter dir - jetzt beginnt der Marathon."
         : "Fünf Bosse liegen hinter dir - Boss 6 wartet noch.";
       ctx.fillText(winLine, WORLD_W / 2, WORLD_H / 2 - 90);
     } else {
@@ -4238,7 +4237,6 @@ function drawUI() {
 
   requestAnimationFrame(loop);
 });
-
 
 
 
