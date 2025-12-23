@@ -607,6 +607,7 @@ const assets = {
   let pendingBossStoryTotalChars = 0;
   let pendingBossStoryCharRate = 90;
   let pendingBossStoryLineEnds = [];
+  let bossAwaitingConfirm = false;
   let gameWon = false;
   let runGlow = 0;
   let globalTime = 0;
@@ -1001,7 +1002,7 @@ Boss erscheint.`,
     {
       offsets: [5, 10, 15],
       texts: [
-        "Meilenstein 4: Projekt arbeitsfähig",
+        "Meilenstein 4: Projekt arbeitsf?hig",
         "Meilenstein 5: Systemlandschaft bereit",
         "Meilenstein 6: Integrations- & Migrationsleitplanken freigegeben",
       ],
@@ -1017,11 +1018,11 @@ Boss erscheint.`,
     {
       offsets: [5, 10, 15, 20, 25],
       texts: [
-        "Meilenstein 10: Umsysteme angebunden → Integrationstest",
-        "Meilenstein 11: TM1 erfolgreich (technische Lauffähigkeit)",
-        "Meilenstein 12: TM2 abgenommen (fachliche Datenqualität)",
+        "Meilenstein 10: Umsysteme angebunden ? Integrationstest",
+        "Meilenstein 11: TM1 erfolgreich (technische Lauff?higkeit)",
+        "Meilenstein 12: TM2 abgenommen (fachliche Datenqualit?t)",
         "Meilenstein 13: TM3 bestanden (Dress Rehearsal / Cut-over-Probe)",
-        "Meilenstein 14: Cut-over-Readiness bestätigt",
+        "Meilenstein 14: Cut-over-Readiness best?tigt",
       ],
     },
     {
@@ -1035,7 +1036,7 @@ Boss erscheint.`,
       offsets: [5, 10],
       texts: [
         "Meilenstein 17: Hypercare abgeschlossen",
-        "Meilenstein 18: Regelbetrieb übernommen",
+        "Meilenstein 18: Regelbetrieb ?bernommen",
       ],
     },
   ];
@@ -1137,11 +1138,17 @@ Boss erscheint.`,
   window.addEventListener("keydown", e => {
     if (e.repeat) return; // kein Halten-Spammen
     if (e.code === "Space" || e.code === "ArrowUp") {
-      if (pendingBossId && bossCountdown > 0) {
+    if (pendingBossId) {
+      if (bossAwaitingConfirm) {
+        bossTransitionActive = true;
+        bossTransitionTimer = 0;
+        bossAwaitingConfirm = false;
+      } else {
         revealNextBossStoryLine();
-        e.preventDefault();
-        return;
       }
+      e.preventDefault();
+      return;
+    }
       flap();
       e.preventDefault();
     }
@@ -1163,8 +1170,14 @@ Boss erscheint.`,
     const p = getWorldPoint(event);
     if (!p || !p.inWorld) return;
 
-    if (pendingBossId && bossCountdown > 0) {
-      revealNextBossStoryLine();
+    if (pendingBossId) {
+      if (bossAwaitingConfirm) {
+        bossTransitionActive = true;
+        bossTransitionTimer = 0;
+        bossAwaitingConfirm = false;
+      } else {
+        revealNextBossStoryLine();
+      }
       return;
     }
 
@@ -1219,6 +1232,8 @@ Boss erscheint.`,
     currentBoss = null;
     pendingBossId = null;
     bossCountdown = 0;
+    bossAwaitingConfirm = false;
+    bossAwaitingConfirm = false;
     bossTransitionActive = false;
     bossTransitionTimer = 0;
 
@@ -1446,9 +1461,10 @@ Boss erscheint.`,
     pendingBossStoryCursorTimer = 0;
     pendingBossStoryCursorOn = true;
     pendingBossStoryLineInterval = 1.3;
-    pendingBossStoryCharRate = 70;
+    pendingBossStoryCharRate = 55;
     pendingBossStoryRevealChars = 0;
     pendingBossStoryLineEnds = [];
+    bossAwaitingConfirm = false;
     let totalChars = 0;
     for (const line of pendingBossStoryLines) {
       totalChars += line.length;
@@ -1461,11 +1477,16 @@ Boss erscheint.`,
   }
 
   function updatePendingBossStory(dt) {
-    if (!pendingBossId || bossCountdown <= 0) return;
-    pendingBossStoryRevealChars = Math.min(
-      pendingBossStoryTotalChars,
-      pendingBossStoryRevealChars + dt * pendingBossStoryCharRate
-    );
+    if (!pendingBossId) return;
+    if (!bossAwaitingConfirm) {
+      pendingBossStoryRevealChars = Math.min(
+        pendingBossStoryTotalChars,
+        pendingBossStoryRevealChars + dt * pendingBossStoryCharRate
+      );
+      if (pendingBossStoryRevealChars >= pendingBossStoryTotalChars) {
+        bossAwaitingConfirm = true;
+      }
+    }
     pendingBossStoryCursorTimer += dt;
     if (pendingBossStoryCursorTimer >= 0.45) {
       pendingBossStoryCursorTimer = 0;
@@ -1474,7 +1495,7 @@ Boss erscheint.`,
   }
 
   function revealNextBossStoryLine() {
-    if (!pendingBossId || !pendingBossStoryLineEnds.length) return;
+    if (!pendingBossId || bossAwaitingConfirm || !pendingBossStoryLineEnds.length) return;
     const current = Math.floor(pendingBossStoryRevealChars);
     for (const end of pendingBossStoryLineEnds) {
       if (end > current) {
@@ -1483,7 +1504,7 @@ Boss erscheint.`,
       }
     }
     if (pendingBossStoryRevealChars >= pendingBossStoryTotalChars) {
-      bossCountdown = 0;
+      bossAwaitingConfirm = true;
     }
   }
 
@@ -3235,6 +3256,7 @@ Boss erscheint.`,
         bossTransitionTimer = 0;
         startBossFight(pendingBossId);
         pendingBossId = null;
+        bossAwaitingConfirm = false;
       }
       // während der Transition keine Welt-Updates
       return;
@@ -3284,12 +3306,7 @@ Boss erscheint.`,
     trailLoopPhase += (bgScrollSpeedBase * scrollMultiplier) * 0.02 * dt;
 
     if (pendingBossId) {
-      bossCountdown -= dt;
       player.vy = 0;
-      if (bossCountdown <= 0) {
-        bossTransitionActive = true;
-        bossTransitionTimer = 0;
-      }
     } else if (!inBossFight) {
       updatePipes(dt);
       updateLootboxes(dt);
@@ -3419,13 +3436,21 @@ Boss erscheint.`,
       let cursorLine = Math.min(Math.max(lastLineWithChars, 0), pendingBossStoryLines.length - 1);
       if (cursorLine < start) cursorLine = start;
       if (cursorLine >= end) cursorLine = end - 1;
+      let charsBefore = 0;
+      for (let i = 0; i < cursorLine; i++) charsBefore += pendingBossStoryLines[i].length;
+      const cursorLineText = pendingBossStoryLines[cursorLine] || "";
+      const charsInLine = Math.max(0, Math.min(cursorLineText.length, Math.floor(revealedChars - charsBefore)));
+      const cursorX = x + ctx.measureText(cursorLineText.slice(0, charsInLine)).width + 4;
       const cursorY = yStart + (cursorLine - start) * lineHeight;
-      ctx.fillRect(x - 10, cursorY + 4, 6, lineHeight - 8);
+      ctx.fillRect(cursorX, cursorY + 4, 6, lineHeight - 8);
     }
 
     ctx.font = `600 14px ${SECONDARY_FONT}`;
     ctx.fillStyle = "rgba(220,240,255,0.7)";
-    ctx.fillText("Leertaste / Tap: überspringen", x, WORLD_H - 38);
+    const hint = bossAwaitingConfirm
+      ? "Leertaste / Tap: Boss starten"
+      : "Leertaste / Tap: überspringen";
+    ctx.fillText(hint, x, WORLD_H - 38);
 
     ctx.restore();
   }
