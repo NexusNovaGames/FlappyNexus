@@ -696,12 +696,12 @@ const assets = {
   const SCORE_TAUNT_MAX = 250;
   const SCORE_TAUNT_STEP_MIN = 12;
   const SCORE_TAUNT_STEP_MAX = 28;
-  const SCORE_TAUNTS = [
+  const NN_SCORE_TAUNTS = [
     "Du bist ja immer noch da...",
     "Geh endlich wieder schaffen!",
     "Du hast starke Impulse",
     "Das ist ein starker Impuls.",
-    "F6 F6F7-!",
+    "F6 F6 F6 F6 F6 F7?!",
     "Was'n hier los-",
     "Beste Firma der Welt <3",
     "Kaffee ist alle- Weiterfliegen!",
@@ -720,12 +720,12 @@ const assets = {
     "Noch ein Versuch, noch ein Punkt.",
     "Produktivitaetslevel: Overdrive.",
     "Du bist der Sprint.",
-    "Das ist kein Bug, das ist Feature.",
-    "Patch ist raus, du auch-",
+    "Das ist kein Bug, das ist Feature!",
+    "Patch ist raus, du auch?!",
     "Regenbogen-Modus aktiviert.",
     "Dein Rekord hat Angst.",
     "Protokoll: Weiterfliegen.",
-    "Checkpoint- Was ist das-",
+    "Checkpoint? Was ist das?",
   ];
 
   const BOSS_STORIES = {
@@ -1018,7 +1018,7 @@ Boss erscheint.`,
     {
       offsets: [5, 10, 15],
       texts: [
-        "Meilenstein 4: Projekt arbeitsf?hig",
+        "Meilenstein 4: Projekt arbeitsfähig",
         "Meilenstein 5: Systemlandschaft bereit",
         "Meilenstein 6: Integrations- & Migrationsleitplanken freigegeben",
       ],
@@ -1034,11 +1034,11 @@ Boss erscheint.`,
     {
       offsets: [5, 10, 15, 20, 25],
       texts: [
-        "Meilenstein 10: Umsysteme angebunden ? Integrationstest",
-        "Meilenstein 11: TM1 erfolgreich (technische Lauff?higkeit)",
-        "Meilenstein 12: TM2 abgenommen (fachliche Datenqualit?t)",
+        "Meilenstein 10: Umsysteme angebunden → Integrationstest",
+        "Meilenstein 11: TM1 erfolgreich (technische Lauffähigkeit)",
+        "Meilenstein 12: TM2 abgenommen (fachliche Datenqualität)",
         "Meilenstein 13: TM3 bestanden (Dress Rehearsal / Cut-over-Probe)",
-        "Meilenstein 14: Cut-over-Readiness best?tigt",
+        "Meilenstein 14: Cut-over-Readiness bestätigt",
       ],
     },
     {
@@ -1052,7 +1052,7 @@ Boss erscheint.`,
       offsets: [5, 10],
       texts: [
         "Meilenstein 17: Hypercare abgeschlossen",
-        "Meilenstein 18: Regelbetrieb ?bernommen",
+        "Meilenstein 18: Regelbetrieb übernommen",
       ],
     },
   ];
@@ -1421,7 +1421,7 @@ Boss erscheint.`,
     if (score < SCORE_TAUNT_MIN || score > SCORE_TAUNT_MAX) return false;
     if (nextScoreTaunt <= 0) scheduleNextScoreTaunt();
     if (score < nextScoreTaunt) return false;
-    const pick = SCORE_TAUNTS[Math.floor(Math.random() * SCORE_TAUNTS.length)];
+    const pick = NN_SCORE_TAUNTS[Math.floor(Math.random() * NN_SCORE_TAUNTS.length)];
     scoreTauntText = pick;
     scoreTauntTimer = SCORE_TAUNT_DURATION;
     scheduleNextScoreTaunt(score);
@@ -1430,7 +1430,6 @@ Boss erscheint.`,
 
   function checkPhaseMilestones() {
     if (scoreTauntTimer > 0) return false;
-    if (!playerName || !getHighlightInfo(playerName).isHighlight) return false;
     if (phaseMilestoneIndex >= PHASE_MILESTONES.length) return false;
     if (inBossFight || bossTransitionActive || pendingBossId) return false;
     const milestone = PHASE_MILESTONES[phaseMilestoneIndex];
@@ -2387,14 +2386,14 @@ Boss erscheint.`,
     if (boss.id === 4) {
       boss.phaseTimer += dt;
       const hpRatio = boss.maxHp > 0 ? boss.hp / boss.maxHp : 0;
-      if (boss.phase === 1 && hpRatio <= 0.7) {
+      if (boss.phase === 1 && hpRatio <= 0.6) {
         boss.phase = 2;
         boss.phaseTimer = 0;
-        boss.cutoverTimer = 22;
+        boss.cutoverTimer = 24;
       }
       if (boss.phase === 2) {
         boss.cutoverTimer = Math.max(0, boss.cutoverTimer - dt);
-        if (boss.cutoverTimer <= 0 || hpRatio <= 0.35) {
+        if (boss.cutoverTimer <= 0 || hpRatio <= 0.25) {
           boss.phase = 3;
           boss.phaseTimer = 0;
         }
@@ -2404,23 +2403,23 @@ Boss erscheint.`,
       }
 
       if (boss.phase === 1) {
-        boss.shotInterval = 1.5;
+        boss.shotInterval = 1.7;
       } else if (boss.phase === 2) {
-        boss.shotInterval = 1.1;
+        boss.shotInterval = 1.3;
       } else {
-        boss.shotInterval = 0.85;
+        boss.shotInterval = 1.05;
       }
 
       boss.addTimer -= dt;
       if (boss.addTimer <= 0 && boss.phase === 1) {
-        boss.addTimer = 2.4 + Math.random() * 0.9;
-        for (let i = 0; i < 3; i++) {
+        boss.addTimer = 3.1 + Math.random() * 1.2;
+        for (let i = 0; i < 2; i++) {
           const ay = boss.y + (Math.random() * 220 - 110);
           bossShots.push({
             x: boss.x - boss.width / 2,
             y: ay,
-            vx: -200 * PROJECTILE_SPEED_SCALE,
-            vy: (Math.random() - 0.5) * 80 * PROJECTILE_SPEED_SCALE,
+            vx: -180 * PROJECTILE_SPEED_SCALE,
+            vy: (Math.random() - 0.5) * 70 * PROJECTILE_SPEED_SCALE,
             life: 5,
             age: 0,
             size: 22,
@@ -2506,11 +2505,11 @@ Boss erscheint.`,
         } else if (boss.phase === 2) {
           const mode = boss.attackMode % 3;
           if (mode === 0) {
-            const speed = 480 * PROJECTILE_SPEED_SCALE;
-            for (let k = 0; k < 3; k++) {
+            const speed = 420 * PROJECTILE_SPEED_SCALE;
+            for (let k = 0; k < 2; k++) {
               bossShots.push({
                 x: boss.x - boss.width / 2,
-                y: 120 + k * (WORLD_H - 240) / 2,
+                y: 140 + k * (WORLD_H - 280),
                 vx: -speed,
                 vy: 0,
                 life: 4,
@@ -2524,26 +2523,26 @@ Boss erscheint.`,
               bossShots.push({
                 x: boss.x - boss.width / 2,
                 y: boss.y + (Math.random() * 160 - 80),
-                vx: -380 * PROJECTILE_SPEED_SCALE,
+                vx: -340 * PROJECTILE_SPEED_SCALE,
                 vy: 0,
                 life: 5,
                 age: 0,
                 size: 18,
                 type: "lock",
               });
-              boss.lockShotTimer = 1.6;
+              boss.lockShotTimer = 2.0;
             }
           } else {
-            if (bossObstacles.length < 3) {
-              const gap = 260;
+            if (bossObstacles.length < 2) {
+              const gap = 300;
               const gyBase = player.y - gap * 0.5;
               const gy = Math.max(70, Math.min(WORLD_H - gap - 70, gyBase + (Math.random() - 0.5) * 160));
               bossObstacles.push({
                 x: WORLD_W + 40,
                 gapY: gy,
                 gap: gap,
-                speed: 170,
-                vy: (Math.random() < 0.5 ? 50 : -50),
+                speed: 150,
+                vy: (Math.random() < 0.5 ? 40 : -40),
               });
             }
           }
@@ -2551,23 +2550,23 @@ Boss erscheint.`,
             bossShots.push({
               x: boss.x - boss.width / 2,
               y: boss.y + (Math.random() * 200 - 100),
-              vx: -300 * PROJECTILE_SPEED_SCALE,
-              vy: (Math.random() - 0.5) * 80 * PROJECTILE_SPEED_SCALE,
+              vx: -270 * PROJECTILE_SPEED_SCALE,
+              vy: (Math.random() - 0.5) * 70 * PROJECTILE_SPEED_SCALE,
               life: 6,
               age: 0,
               size: 22,
               type: "delay",
             });
-            boss.delayShotTimer = 1.6;
+            boss.delayShotTimer = 2.0;
           }
         } else {
-          const speed = 620 * PROJECTILE_SPEED_SCALE;
-          for (let k = 0; k < 4; k++) {
+          const speed = 560 * PROJECTILE_SPEED_SCALE;
+          for (let k = 0; k < 3; k++) {
             bossShots.push({
               x: boss.x - boss.width / 2,
-              y: 90 + k * (WORLD_H - 180) / 3,
+              y: 110 + k * (WORLD_H - 220) / 2,
               vx: -speed,
-              vy: (Math.random() - 0.5) * 60 * PROJECTILE_SPEED_SCALE,
+              vy: (Math.random() - 0.5) * 50 * PROJECTILE_SPEED_SCALE,
               life: 4,
               age: 0,
               size: 18,
@@ -2578,38 +2577,38 @@ Boss erscheint.`,
             bossShots.push({
               x: boss.x - boss.width / 2,
               y: boss.y + (Math.random() * 160 - 80),
-              vx: -480 * PROJECTILE_SPEED_SCALE,
+              vx: -420 * PROJECTILE_SPEED_SCALE,
               vy: 0,
               life: 5,
               age: 0,
               size: 20,
               type: "lock",
             });
-            boss.lockShotTimer = 0.9;
+            boss.lockShotTimer = 1.2;
           }
           if (boss.delayShotTimer <= 0) {
             bossShots.push({
               x: boss.x - boss.width / 2,
               y: boss.y + (Math.random() * 200 - 100),
-              vx: -340 * PROJECTILE_SPEED_SCALE,
-              vy: (Math.random() - 0.5) * 90 * PROJECTILE_SPEED_SCALE,
+              vx: -300 * PROJECTILE_SPEED_SCALE,
+              vy: (Math.random() - 0.5) * 80 * PROJECTILE_SPEED_SCALE,
               life: 6,
               age: 0,
               size: 24,
               type: "delay",
             });
-            boss.delayShotTimer = 1.1;
+            boss.delayShotTimer = 1.4;
           }
-          if (boss.attackMode % 2 === 0 && bossObstacles.length < 4) {
-            const gap = 200;
+          if (boss.attackMode % 2 === 0 && bossObstacles.length < 3) {
+            const gap = 230;
             const gyBase = player.y - gap * 0.5;
-            const gy = Math.max(60, Math.min(WORLD_H - gap - 60, gyBase + (Math.random() - 0.5) * 140));
+            const gy = Math.max(60, Math.min(WORLD_H - gap - 60, gyBase + (Math.random() - 0.5) * 120));
             bossObstacles.push({
               x: WORLD_W + 40,
               gapY: gy,
               gap: gap,
-              speed: 230,
-              vy: (Math.random() < 0.5 ? 60 : -60),
+              speed: 200,
+              vy: (Math.random() < 0.5 ? 45 : -45),
             });
           }
         }
@@ -3797,7 +3796,7 @@ Boss erscheint.`,
 
     if (img.complete && img.naturalWidth) {
       const aspect = img.width / img.height;
-      const scale = 1.2;
+      const scale = 1.38;
       let drawW = r * 2 * scale;
       let drawH = r * 2 * scale;
       if (aspect > 1) {
