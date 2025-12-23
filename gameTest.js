@@ -51,7 +51,7 @@ document.addEventListener("DOMContentLoaded", () => {
   let viewOffsetY = 0;
   let dpr = 1;
   const FONT_LINK =
-    "https://fonts.googleapis.com/css2family=Orbitron:wght@400;600&family=Rajdhani:wght@400;600&display=swap";
+    "https://fonts.googleapis.com/css2?family=Orbitron:wght@400;600&family=Rajdhani:wght@400;600&display=swap";
   if (!document.querySelector('link[data-flappy-font]')) {
     const fontLink = document.createElement("link");
     fontLink.rel = "stylesheet";
@@ -471,7 +471,6 @@ const assets = {
   const LEADERBOARD_ENTRY_HEIGHT = 26;
   const LEADERBOARD_API_URL = "https://flappynexus.ricks-0c1.workers.dev";
   let lastTime = 0;
-  let currentBackground = "bg1";
 
   try {
     const stored = localStorage.getItem("flappy-nexus-highscore");
@@ -1197,12 +1196,14 @@ Boss erscheint.`,
   canvas.addEventListener("mousedown", handlePointerPress);
 
   canvas.addEventListener("touchstart", e => {
+    const p = getWorldPoint(e);
     handlePointerPress(e);
-    if (getWorldPoint(e).inWorld) e.preventDefault();
+    if (p && p.inWorld) e.preventDefault();
   }, { passive: false });
 
   canvas.addEventListener("touchmove", e => {
-    if (getWorldPoint(e).inWorld) {
+    const p = getWorldPoint(e);
+    if (p && p.inWorld) {
       e.preventDefault();
     }
   }, { passive: false });
@@ -1220,7 +1221,6 @@ Boss erscheint.`,
     bossCountdown = 0;
     bossTransitionActive = false;
     bossTransitionTimer = 0;
-    currentBackground = "bg1";
 
     Object.assign(player, {
       y: WORLD_H / 2,
@@ -1236,7 +1236,7 @@ Boss erscheint.`,
       shieldHits: 1,
       debuffGraceTimer: 0,
       beamGraceTimer: 0,
-    lockTimer: 0,
+      lockTimer: 0,
       weaponMode: "normal",
       ammoRapid: 0,
       ammoSpread: 0,
@@ -1445,8 +1445,8 @@ Boss erscheint.`,
     pendingBossStoryTimer = 0;
     pendingBossStoryCursorTimer = 0;
     pendingBossStoryCursorOn = true;
-    pendingBossStoryLineInterval = 1.1;
-    pendingBossStoryCharRate = 95;
+    pendingBossStoryLineInterval = 1.3;
+    pendingBossStoryCharRate = 70;
     pendingBossStoryRevealChars = 0;
     pendingBossStoryLineEnds = [];
     let totalChars = 0;
@@ -2204,7 +2204,6 @@ Boss erscheint.`,
     currentBoss.lootTimer = 1.6;
     bossLoot.length = 0;
     bossObstacles.length = 0;
-    if (id >= 3) currentBackground = "bg3";
     pipes.length = 0;
     lootboxes.length = 0;
     playerShots.length = 0;
@@ -2238,7 +2237,6 @@ Boss erscheint.`,
 
     if (id === 1) {
       boss1Defeated = true;
-      currentBackground = "bg2";
       score += 10;
       if (!checkPhaseMilestones()) checkScoreTaunts();
     } else if (id === 2) {
@@ -2249,25 +2247,21 @@ Boss erscheint.`,
       boss3Defeated = true;
       score += 30;
       if (!checkPhaseMilestones()) checkScoreTaunts();
-      currentBackground = "bg2";
       finalCongratsTimer = 8; // Glückwunschbanner anzeigen
     } else if (id === 4) {
       boss4Defeated = true;
       score += 40;
       if (!checkPhaseMilestones()) checkScoreTaunts();
-      currentBackground = "bg2";
       finalCongratsTimer = 8;
     } else if (id === 5) {
       boss5Defeated = true;
       score += 50;
       if (!checkPhaseMilestones()) checkScoreTaunts();
-      currentBackground = "bg2";
       finalCongratsTimer = 8;
     } else if (id === 6) {
       boss6Defeated = true;
       score += 60;
       if (!checkPhaseMilestones()) checkScoreTaunts();
-      currentBackground = "bg2";
       finalCongratsTimer = 8;
     }
 
