@@ -717,10 +717,10 @@ const assets = {
     "Die Maustaste raucht.",
     "Unaufhaltsam.",
     "Du fliegst wie ein Commit am Freitag.",
-    "Der Boss schaut schon nervös.",
+    "Der Boss schaut schon nerv\u00f6s.",
     "Break- Nicht heute.",
     "Noch ein Versuch, noch ein Punkt.",
-    "Produktivitaetslevel: Overdrive.",
+    "Produktivit\u00e4tslevel: Overdrive.",
     "Du bist der Sprint.",
     "Das ist kein Bug, das ist Feature!",
     "Patch ist raus, du auch?!",
@@ -728,7 +728,8 @@ const assets = {
     "Dein Rekord hat Angst.",
     "Protokoll: Weiterfliegen.",
     "Checkpoint? Was ist das?",
-  ];
+    "Mr. Nova Nova.. :D",
+];
 
   const BOSS_STORIES = {
     1: `Boss: "Scope Creeper"
@@ -739,20 +740,20 @@ Ein harmloser Satz.
 Gesprochen zu Beginn von Discover.
 
 Doch irgendwo zwischen Flipchart, Whiteboard und dem ersten
-"Nur mal kurz pr?fen..."
+"Nur mal kurz prüfen..."
 begann sich etwas zu regen.
 
 Ein Gedanke wurde zu einer Frage.
 Eine Frage zu einer Anforderung.
 Eine Anforderung zu vielen.
 
-Pl?tzlich war er da.
+Plötzlich war er da.
 
 Scope Creeper.
 
-Er w?chst von jedem "K?nnten wir nicht auch...?"
-Er n?hrt sich von Zeit und Budget.
-Und je l?nger ihr z?gert, desto mehr spawnt er.
+Er wächst von jedem "Könnten wir nicht auch...?"
+Er nährt sich von Zeit und Budget.
+Und je länger ihr zögert, desto mehr spawnt er.
 
 Fokus schwindet. Entscheidungen werden weich.
 
@@ -765,16 +766,16 @@ Ein Projektplan.
 Viele Streams.
 Und der Satz:
 
-"Wir kl?ren die Rollen sp?ter."
+"Wir klären die Rollen später."
 
-Doch "sp?ter" kam nie.
+Doch "später" kam nie.
 
 Entscheidungen blieben offen.
 Verantwortlichkeiten verschwammen.
 Alles lief parallel - aber nichts zusammen.
 
-Meetings wurden l?nger.
-Ergebnisse k?rzer.
+Meetings wurden länger.
+Ergebnisse kürzer.
 Und jeder wartete darauf, dass jemand anderes entscheidet.
 
 Aus dieser Unordnung erhob sich:
@@ -782,10 +783,10 @@ Aus dieser Unordnung erhob sich:
 Lord Chaos Governance.
 
 Er blockiert jeden Fortschritt.
-Er n?hrt sich von offenen Punkten.
-Und je mehr ihr abstimmt, desto st?rker wird er.
+Er nährt sich von offenen Punkten.
+Und je mehr ihr abstimmt, desto stärker wird er.
 
-Der Kalender f?llt sich. Das Projekt steht still.
+Der Kalender füllt sich. Das Projekt steht still.
 
 Boss erscheint.`,
     3: `Boss: "Fit-to-Standard Hydra"
@@ -801,11 +802,11 @@ Und dann der Satz:
 "Das haben wir schon immer so gemacht."
 
 Mit jedem abgeschlagenen Gap wuchsen zwei neue nach.
-Workshops wurden l?nger.
+Workshops wurden länger.
 Blueprints dicker.
 Der Standard immer weiter weg.
 
-Aus Prozessen wurden Sonderf?lle.
+Aus Prozessen wurden Sonderfälle.
 Aus Entscheidungen Designs.
 Aus Einfachheit Overengineering.
 
@@ -814,30 +815,30 @@ Aus all dem kroch sie hervor:
 Die Fit-to-Standard Hydra.
 
 Sie vervielfacht Gaps.
-Sie verf?hrt mit perfekten L?sungen.
-Und jeder Versuch, sie "sauber" zu l?sen, macht sie st?rker.
+Sie verführt mit perfekten Lösungen.
+Und jeder Versuch, sie "sauber" zu lösen, macht sie stärker.
 
 Der Standard droht zu verschwinden.
 
 Boss erscheint.`,
     4: `Boss: "Migration Minotaur"
 
-Realize f?hlte sich kontrolliert an.
+Realize fühlte sich kontrolliert an.
 
 Customizing stand.
 Entwicklungen liefen.
 Und jemand sagte:
 
-"Die Daten migrieren wir sp?ter."
+"Die Daten migrieren wir später."
 
 Doch tief im System wartete bereits etwas.
 
 Versteckt im Labyrinth der Altdaten.
-Gen?hrt von Dubletten, L?cken und Altlasten.
-Unauff?llig - bis zur ersten Testmigration.
+Genährt von Dubletten, Lücken und Altlasten.
+Unauffällig - bis zur ersten Testmigration.
 
-TM1 lie? ihn kurz aufblitzen.
-TM2 weckte ihn vollst?ndig.
+TM1 ließ ihn kurz aufblitzen.
+TM2 weckte ihn vollständig.
 
 Fehler explodierten.
 Fixing-Schleifen begannen.
@@ -847,9 +848,9 @@ Aus dem Migrationslabyrinth trat hervor:
 
 Der Migration Minotaur.
 
-Er frisst saubere Zeitpl?ne.
+Er frisst saubere Zeitpläne.
 Er liebt unklare Objektketten.
-Und jeder ungepr?fte Datensatz macht ihn st?rker.
+Und jeder ungeprüfte Datensatz macht ihn stärker.
 
 Der Weg zum Go-Live wird enger.
 
@@ -864,26 +865,26 @@ Und der Countdown lief.
 
 "Wir haben alles vorbereitet."
 
-Doch unter der Oberfl?che bewegte sich etwas.
+Doch unter der Oberfläche bewegte sich etwas.
 
 Viele Arme.
 Viele Systeme.
 Viele Marktpartner.
 
 Ein falscher Schritt -
-und alles ger?t gleichzeitig in Bewegung.
+und alles gerät gleichzeitig in Bewegung.
 
 Jobs kollidieren.
-Schnittstellen rei?en.
+Schnittstellen reißen.
 Seiteneffekte schlagen dort zu, wo niemand hinsieht.
 
 Aus dem Cut-over-Fenster erhebt sich:
 
 Der Cut-over Kraken.
 
-Er kennt keinen R?ckzug.
+Er kennt keinen Rückzug.
 Er verzeiht keinen Fehler.
-Und jede Sekunde macht ihn st?rker.
+Und jede Sekunde macht ihn stärker.
 
 Keine zweite Chance. Der Go-Live steht bevor.
 
@@ -898,7 +899,7 @@ Und jemand sagt:
 
 "Zur Sicherheit lassen wir das Altsystem noch an."
 
-Niemand merkt, wie sich etwas l?st.
+Niemand merkt, wie sich etwas löst.
 
 Ein Prozess im Hintergrund.
 Ein manueller Workaround.
@@ -914,12 +915,14 @@ Das Legacy Phantom.
 
 Es ist schwer zu sehen.
 Es greift leise an.
-Und solange es existiert, zieht es euch zur?ck.
+Und solange es existiert, zieht es euch zurück.
 
 Die Zukunft bleibt stehen, solange die Vergangenheit lebt.
 
 Boss erscheint.`,
   };
+
+
 
 
 
@@ -1438,7 +1441,10 @@ Boss erscheint.`,
     if (!phaseMilestones || !phaseMilestones.length) return false;
     const currentIndex = phaseMilestoneIndices[phaseIndex] || 0;
     if (currentIndex >= phaseMilestones.length) return false;
-    const phaseEnd = PHASE_END_SCORES[phaseIndex] ?? Infinity;
+    const phaseEnd =
+      PHASE_END_SCORES[phaseIndex] !== undefined && PHASE_END_SCORES[phaseIndex] !== null
+        ? PHASE_END_SCORES[phaseIndex]
+        : Infinity;
     if (score >= phaseEnd) return false;
     const milestone = phaseMilestones[currentIndex];
     if (!milestone || score < milestone.score) return false;
@@ -2475,7 +2481,7 @@ Boss erscheint.`,
       boss.flipTimer += dt;
       if (boss.flipTimer > 2.4) {
         boss.flipTimer = 0;
-        boss.flipSide = boss.flipSide === -1 ? 1 : -1;
+      boss.flipSide = boss.flipSide === -1 ? 1 : -1;
       }
 
     boss.shotTimer += dt;
