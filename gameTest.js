@@ -630,6 +630,7 @@ const assets = {
   let finalCongratsTimer = 0;
   let scoreTauntText = "";
   let scoreTauntTimer = 0;
+  let phaseMilestoneCooldown = 0;
   let nextScoreTaunt = 0;
   let phaseMilestoneIndex = 0;
   let phaseTextPhase = 0;
@@ -696,6 +697,7 @@ const assets = {
   const SCORE_TAUNT_MAX = 250;
   const SCORE_TAUNT_STEP_MIN = 12;
   const SCORE_TAUNT_STEP_MAX = 28;
+  const PHASE_MILESTONE_COOLDOWN = 6;
   const NN_SCORE_TAUNTS = [
     "Du bist ja immer noch da...",
     "Geh endlich wieder schaffen!",
@@ -1249,9 +1251,9 @@ Boss erscheint.`,
     pendingBossId = null;
     bossCountdown = 0;
     bossAwaitingConfirm = false;
-    bossAwaitingConfirm = false;
     bossTransitionActive = false;
     bossTransitionTimer = 0;
+    phaseMilestoneCooldown = 0;
 
     Object.assign(player, {
       y: WORLD_H / 2,
@@ -1309,6 +1311,7 @@ Boss erscheint.`,
     lastScoreHueStep = 0;
     scoreTauntText = "";
     scoreTauntTimer = 0;
+    phaseMilestoneCooldown = 0;
     nextScoreTaunt = 0;
     phaseMilestoneIndex = 0;
     scheduleNextScoreTaunt(0);
@@ -1430,12 +1433,14 @@ Boss erscheint.`,
 
   function checkPhaseMilestones() {
     if (scoreTauntTimer > 0) return false;
+    if (phaseMilestoneCooldown > 0) return false;
     if (phaseMilestoneIndex >= PHASE_MILESTONES.length) return false;
     if (inBossFight || bossTransitionActive || pendingBossId) return false;
     const milestone = PHASE_MILESTONES[phaseMilestoneIndex];
     if (!milestone || score < milestone.score) return false;
     scoreTauntText = milestone.text;
     scoreTauntTimer = SCORE_TAUNT_DURATION;
+    phaseMilestoneCooldown = PHASE_MILESTONE_COOLDOWN;
     phaseMilestoneIndex += 1;
     return true;
   }
@@ -3337,6 +3342,10 @@ Boss erscheint.`,
       scoreTauntTimer -= dt;
       if (scoreTauntTimer < 0) scoreTauntTimer = 0;
     }
+    if (phaseMilestoneCooldown > 0) {
+      phaseMilestoneCooldown -= dt;
+      if (phaseMilestoneCooldown < 0) phaseMilestoneCooldown = 0;
+    }
 
     if (player.y - player.radius <= 0 || player.y + player.radius >= WORLD_H) {
       endGame();
@@ -3796,7 +3805,7 @@ Boss erscheint.`,
 
     if (img.complete && img.naturalWidth) {
       const aspect = img.width / img.height;
-      const scale = 1.38;
+      const scale = 1.59;
       let drawW = r * 2 * scale;
       let drawH = r * 2 * scale;
       if (aspect > 1) {
