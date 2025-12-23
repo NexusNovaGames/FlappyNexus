@@ -695,8 +695,8 @@ const assets = {
   const SCORE_TAUNT_DURATION = 4;
   const SCORE_TAUNT_MIN = 1;
   const SCORE_TAUNT_MAX = 9999;
-  const SCORE_TAUNT_STEP_MIN = 8;
-  const SCORE_TAUNT_STEP_MAX = 16;
+  const SCORE_TAUNT_STEP_MIN = 4;
+  const SCORE_TAUNT_STEP_MAX = 9;
   const PHASE_MILESTONE_COOLDOWN = 6;
   const NN_SCORE_TAUNTS = [
     "Du bist ja immer noch da...",
@@ -1407,8 +1407,7 @@ Boss erscheint.`,
 
   function scheduleNextScoreTaunt(fromScore = score) {
     if (fromScore < SCORE_TAUNT_MIN) {
-      nextScoreTaunt =
-        SCORE_TAUNT_MIN + Math.floor(Math.random() * (SCORE_TAUNT_MAX - SCORE_TAUNT_MIN + 1));
+      nextScoreTaunt = SCORE_TAUNT_MIN + Math.floor(Math.random() * 3);
       return;
     }
     const step =
