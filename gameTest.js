@@ -632,7 +632,7 @@ const assets = {
   let scoreTauntTimer = 0;
   let phaseMilestoneCooldown = 0;
   let nextScoreTaunt = 0;
-  let phaseMilestoneIndex = 0;
+  let phaseMilestoneIndices = [];
   let phaseTextPhase = 0;
   let phaseTextIndex = 0;
   let phaseTextX = 0;
@@ -693,7 +693,7 @@ const assets = {
   const BOSS5_SCORE = 160; // Boss 5 bei 160 Punkten
   const BOSS6_SCORE = 200; // Boss 6 bei 200 Punkten
   const SCORE_TAUNT_DURATION = 4;
-  const SCORE_TAUNT_MIN = 10;
+  const SCORE_TAUNT_MIN = 60;
   const SCORE_TAUNT_MAX = 250;
   const SCORE_TAUNT_STEP_MIN = 12;
   const SCORE_TAUNT_STEP_MAX = 28;
@@ -1058,19 +1058,16 @@ Boss erscheint.`,
       ],
     },
   ];
-  const PHASE_MILESTONES = (() => {
-    const starts = [0, BOSS1_SCORE, BOSS2_SCORE, BOSS3_SCORE, BOSS4_SCORE, BOSS5_SCORE];
-    const milestones = [];
-    for (let i = 0; i < PHASE_MILESTONE_DEFS.length; i++) {
-      const def = PHASE_MILESTONE_DEFS[i];
-      const start = starts[i] || 0;
-      for (let j = 0; j < def.texts.length; j++) {
-        const score = start + (def.offsets[j] || 0);
-        milestones.push({ score, text: def.texts[j] });
-      }
-    }
-    return milestones.sort((a, b) => a.score - b.score);
-  })();
+  const PHASE_START_SCORES = [0, BOSS1_SCORE, BOSS2_SCORE, BOSS3_SCORE, BOSS4_SCORE, BOSS5_SCORE];
+  const PHASE_END_SCORES = [BOSS1_SCORE, BOSS2_SCORE, BOSS3_SCORE, BOSS4_SCORE, BOSS5_SCORE, BOSS6_SCORE];
+  const PHASE_MILESTONES_BY_PHASE = PHASE_MILESTONE_DEFS.map((def, idx) => {
+    const start = PHASE_START_SCORES[idx] || 0;
+    return def.texts.map((text, j) => ({
+      score: start + (def.offsets[j] || 0),
+      text,
+    }));
+  });
+  phaseMilestoneIndices = new Array(PHASE_MILESTONE_DEFS.length).fill(0);
 
   const PHASE1_BACKGROUND_LINES = [
     "Phase 1: Discovery",
@@ -1313,7 +1310,7 @@ Boss erscheint.`,
     scoreTauntTimer = 0;
     phaseMilestoneCooldown = 0;
     nextScoreTaunt = 0;
-    phaseMilestoneIndex = 0;
+    phaseMilestoneIndices = new Array(PHASE_MILESTONE_DEFS.length).fill(0);
     scheduleNextScoreTaunt(0);
     phaseTextPhase = 0;
     phaseTextIndex = 0;
@@ -1434,14 +1431,20 @@ Boss erscheint.`,
   function checkPhaseMilestones() {
     if (scoreTauntTimer > 0) return false;
     if (phaseMilestoneCooldown > 0) return false;
-    if (phaseMilestoneIndex >= PHASE_MILESTONES.length) return false;
     if (inBossFight || bossTransitionActive || pendingBossId) return false;
-    const milestone = PHASE_MILESTONES[phaseMilestoneIndex];
+    const phaseIndex = getPhaseIndex();
+    const phaseMilestones = PHASE_MILESTONES_BY_PHASE[phaseIndex];
+    if (!phaseMilestones || !phaseMilestones.length) return false;
+    const currentIndex = phaseMilestoneIndices[phaseIndex] || 0;
+    if (currentIndex >= phaseMilestones.length) return false;
+    const phaseEnd = PHASE_END_SCORES[phaseIndex] ?? Infinity;
+    if (score >= phaseEnd) return false;
+    const milestone = phaseMilestones[currentIndex];
     if (!milestone || score < milestone.score) return false;
     scoreTauntText = milestone.text;
     scoreTauntTimer = SCORE_TAUNT_DURATION;
     phaseMilestoneCooldown = PHASE_MILESTONE_COOLDOWN;
-    phaseMilestoneIndex += 1;
+    phaseMilestoneIndices[phaseIndex] = currentIndex + 1;
     return true;
   }
 
@@ -3805,7 +3808,7 @@ Boss erscheint.`,
 
     if (img.complete && img.naturalWidth) {
       const aspect = img.width / img.height;
-      const scale = 1.59;
+      const scale = 1.99;
       let drawW = r * 2 * scale;
       let drawH = r * 2 * scale;
       if (aspect > 1) {
@@ -4309,7 +4312,6 @@ function drawUI() {
 
   requestAnimationFrame(loop);
 });
-
 
 
 
