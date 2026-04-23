@@ -5379,13 +5379,18 @@ function drawUI() {
 
   nameButtonRect = nameButtonCandidate;
 
-  // Audio toggle buttons — bottom-left corner (avoids leaderboard top-right overlap)
+  // Audio toggle buttons — bottom-right during gameplay (avoids shield/HP overlap),
+  // bottom-left on game-over / intro (leaderboard occupies right side)
   {
     const btnSize = Math.round(32 * ms);
     const gap = 6;
-    const bx1 = 14;
-    const bx2 = bx1 + btnSize + gap;
     const by = Math.round(Math.min(WORLD_H - btnSize - 14, safeWorldBottom - btnSize - 10));
+    const bx1 = gameRunning
+      ? WORLD_W - 14 - 2 * btnSize - gap   // right side: music left of SFX
+      : 14;                                  // left side
+    const bx2 = gameRunning
+      ? WORLD_W - 14 - btnSize              // right side: SFX outermost
+      : bx1 + btnSize + gap;                // left side
 
     function _drawAudioBtn(bx, by, active, label) {
       ctx.save();
