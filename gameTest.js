@@ -223,11 +223,11 @@ document.addEventListener("DOMContentLoaded", () => {
     _pendingPlay: null,
     _titleIdx: 0,
     tracks: {
-      titleScreen:   ['assets/audio/title-screen-01.mp3', 'assets/audio/title-screen-02.mp3'],
-      mainTheme:     ['assets/audio/main-theme-01.mp3'],
-      preFinalBoss:  ['assets/audio/pre-final-boss.mp3'],
-      bossEncounter: ['assets/audio/boss-encounter-01.mp3', 'assets/audio/boss-encounter-02.mp3', 'assets/audio/boss-encounter-03.mp3', 'assets/audio/boss-encounter-04.mp3', 'assets/audio/boss-encounter-05.mp3'],
-      nnAnthem:      ['assets/audio/nn-anthem.mp3'],
+      titleScreen:   ['https://cdn.jsdelivr.net/gh/NexusNovaGames/FlappyNexus@main/assets/audio/title-screen-01.mp3', 'https://cdn.jsdelivr.net/gh/NexusNovaGames/FlappyNexus@main/assets/audio/title-screen-02.mp3'],
+      mainTheme:     ['https://cdn.jsdelivr.net/gh/NexusNovaGames/FlappyNexus@main/assets/audio/main-theme-01.mp3'],
+      preFinalBoss:  ['https://cdn.jsdelivr.net/gh/NexusNovaGames/FlappyNexus@main/assets/audio/pre-final-boss.mp3'],
+      bossEncounter: ['https://cdn.jsdelivr.net/gh/NexusNovaGames/FlappyNexus@main/assets/audio/boss-encounter-01.mp3', 'https://cdn.jsdelivr.net/gh/NexusNovaGames/FlappyNexus@main/assets/audio/boss-encounter-02.mp3', 'https://cdn.jsdelivr.net/gh/NexusNovaGames/FlappyNexus@main/assets/audio/boss-encounter-03.mp3', 'https://cdn.jsdelivr.net/gh/NexusNovaGames/FlappyNexus@main/assets/audio/boss-encounter-04.mp3', 'https://cdn.jsdelivr.net/gh/NexusNovaGames/FlappyNexus@main/assets/audio/boss-encounter-05.mp3'],
+      nnAnthem:      ['https://cdn.jsdelivr.net/gh/NexusNovaGames/FlappyNexus@main/assets/audio/nn-anthem.mp3'],
     },
   };
   let _musEl = null;      // active HTMLAudioElement
