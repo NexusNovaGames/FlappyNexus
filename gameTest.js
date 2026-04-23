@@ -3747,7 +3747,7 @@ Boss erscheint.`,
   }
 
   function spawnExplosion(x, y, color = "rgba(140,220,255,1)", power = 1) {
-    const count = Math.floor(12 * power * (isMobile() ? 0.5 : 1));
+    const count = Math.floor(12 * power * (isMobile() ? 0.25 : 1));
     for (let i = 0; i < count; i++) {
       const angle = Math.random() * Math.PI * 2;
       const speed = 120 + Math.random() * 200 * power;
@@ -4067,8 +4067,7 @@ Boss erscheint.`,
       const alpha = (1 - t) * 0.45;
       const width = 12 * (1 - t) + 3;
 
-      ctx.shadowColor = "rgba(255,120,60,0.35)";
-      ctx.shadowBlur = 4;
+      if (!perfMode) { ctx.shadowColor = "rgba(255,120,60,0.35)"; ctx.shadowBlur = 4; }
       ctx.beginPath();
       ctx.moveTo(a.x, a.y);
       ctx.lineTo(b.x, b.y);
@@ -4363,21 +4362,23 @@ Boss erscheint.`,
 
       // Comet tail aligned with velocity
       const shotAngle = Math.atan2(s.vy || 0, s.vx || -1);
-      ctx.save();
-      ctx.rotate(shotAngle);
-      ctx.globalCompositeOperation = 'lighter';
-      ctx.globalAlpha = alpha * 0.38;
-      const tailLen = size * 4;
-      const tailGrad = ctx.createLinearGradient(-tailLen, 0, 0, 0);
-      tailGrad.addColorStop(0, `${color}00`);
-      tailGrad.addColorStop(1, `${color}88`);
-      ctx.fillStyle = tailGrad;
-      ctx.beginPath();
-      ctx.ellipse(-tailLen / 2, 0, tailLen / 2, size * 0.48, 0, 0, Math.PI * 2);
-      ctx.fill();
-      ctx.globalCompositeOperation = 'source-over';
-      ctx.globalAlpha = 1;
-      ctx.restore();
+      if (!perfMode) {
+        ctx.save();
+        ctx.rotate(shotAngle);
+        ctx.globalCompositeOperation = 'lighter';
+        ctx.globalAlpha = alpha * 0.38;
+        const tailLen = size * 4;
+        const tailGrad = ctx.createLinearGradient(-tailLen, 0, 0, 0);
+        tailGrad.addColorStop(0, `${color}00`);
+        tailGrad.addColorStop(1, `${color}88`);
+        ctx.fillStyle = tailGrad;
+        ctx.beginPath();
+        ctx.ellipse(-tailLen / 2, 0, tailLen / 2, size * 0.48, 0, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.globalCompositeOperation = 'source-over';
+        ctx.globalAlpha = 1;
+        ctx.restore();
+      }
 
       // Spinning orb
       ctx.rotate(age * 2.6);
@@ -4401,8 +4402,10 @@ Boss erscheint.`,
   }
 
   function drawExplosions() {
+    if (!explosions.length) return;
     ctx.save();
-    ctx.globalCompositeOperation = "lighter";
+    // lighter composite causes expensive framebuffer flush on mobile tile-GPUs — use source-over instead
+    ctx.globalCompositeOperation = perfMode ? "source-over" : "lighter";
     for (const e of explosions) {
       const t = 1 - e.age / e.life;
       ctx.fillStyle = e.color.replace("1)", `${t})`);
