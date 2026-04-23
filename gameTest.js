@@ -4494,16 +4494,26 @@ Boss erscheint.`,
 
     if (player.turboTimer > 0) {
       ctx.save();
-      for (let k = 0; k < 3; k++) {
-        const a = globalTime * 3.2 + (k * Math.PI * 2) / 3;
-        const sparkPulse = 0.5 + 0.4 * Math.sin(globalTime * 7 + k * 2.1);
-        ctx.strokeStyle = `rgba(255,${140 + k * 30},60,${sparkPulse})`;
-        ctx.lineWidth = 2.5;
-        ctx.shadowColor = 'rgba(255,160,40,0.7)';
-        ctx.shadowBlur = 6;
+      if (perfMode) {
+        // Mobile: single arc, no shadow
+        const sparkPulse = 0.5 + 0.4 * Math.sin(globalTime * 7);
+        ctx.strokeStyle = `rgba(255,170,60,${sparkPulse})`;
+        ctx.lineWidth = 2;
         ctx.beginPath();
-        ctx.arc(0, 0, r + 16, a, a + Math.PI * 0.55);
+        ctx.arc(0, 0, r + 14, globalTime * 3.2, globalTime * 3.2 + Math.PI * 1.4);
         ctx.stroke();
+      } else {
+        for (let k = 0; k < 3; k++) {
+          const a = globalTime * 3.2 + (k * Math.PI * 2) / 3;
+          const sparkPulse = 0.5 + 0.4 * Math.sin(globalTime * 7 + k * 2.1);
+          ctx.strokeStyle = `rgba(255,${140 + k * 30},60,${sparkPulse})`;
+          ctx.lineWidth = 2.5;
+          ctx.shadowColor = 'rgba(255,160,40,0.7)';
+          ctx.shadowBlur = 6;
+          ctx.beginPath();
+          ctx.arc(0, 0, r + 16, a, a + Math.PI * 0.55);
+          ctx.stroke();
+        }
       }
       ctx.restore();
     }
@@ -4694,7 +4704,9 @@ function drawUI() {
   const TOTAL_HEARTS = 5;
   const heartSize = Math.round(20 * ms);
   const heartGap = Math.round(6 * ms);
-  const heartsTopY = WORLD_H - Math.round(118 * ms);
+  const heartsTopY = isMobile()
+    ? Math.round(safeWorldBottom) - Math.round(65 * ms)
+    : WORLD_H - Math.round(118 * ms);
 
   ctx.textAlign = "left";
   ctx.textBaseline = "middle";
