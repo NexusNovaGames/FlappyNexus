@@ -150,7 +150,10 @@ document.addEventListener("DOMContentLoaded", () => {
   let nameErrorLabel = null;
 
   function resizeCanvas() {
-    dpr = Math.max(1, window.devicePixelRatio || 1);
+    const rawDpr = Math.max(1, window.devicePixelRatio || 1);
+    // Cap DPR at 2 on mobile — 3× DPR means 9× pixels vs 1×, kills mobile GPUs.
+    // DPR=2 is visually indistinguishable for a pixel-art game at this scale.
+    dpr = isMobile() ? Math.min(2, rawDpr) : rawDpr;
 
     // Use window dimensions directly so we always fill the real viewport,
     // even when the canvas is inside a Webflow embed with constrained height.
@@ -5240,13 +5243,13 @@ function drawUI() {
 
   nameButtonRect = nameButtonCandidate;
 
-  // Audio toggle buttons — top-right corner (avoids overlap with leaderboard/NAME btn)
+  // Audio toggle buttons — bottom-left corner (avoids leaderboard top-right overlap)
   {
     const btnSize = Math.round(32 * ms);
     const gap = 6;
-    const bx2 = WORLD_W - btnSize - 14;
-    const bx1 = bx2 - btnSize - gap;
-    const by = 14;
+    const bx1 = 14;
+    const bx2 = bx1 + btnSize + gap;
+    const by = WORLD_H - btnSize - 14;
 
     function _drawAudioBtn(bx, by, active, label) {
       ctx.save();
