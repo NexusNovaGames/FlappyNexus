@@ -1,6 +1,38 @@
 document.addEventListener("DOMContentLoaded", () => {
   const canvas = document.getElementById("game");
   if (!canvas) return;
+
+  // Move canvas to <body> top-level so position:fixed always references the
+  // real viewport. Webflow containers can have CSS transforms which break
+  // fixed-positioning on descendant elements.
+  if (canvas.parentElement !== document.body) {
+    document.body.appendChild(canvas);
+  }
+  canvas.style.zIndex = '9999';
+
+  // Build portrait-rotation overlay in JS so it works inside Webflow embeds
+  // (the HTML file's #rotate-overlay isn't part of the Webflow page DOM).
+  let _rotateEl = document.getElementById('nn-rotate-overlay');
+  if (!_rotateEl) {
+    if (!document.getElementById('nn-rotate-style')) {
+      const rs = document.createElement('style');
+      rs.id = 'nn-rotate-style';
+      rs.textContent = '@keyframes nnRotatePhone{0%,35%{transform:rotate(0deg)}55%,80%{transform:rotate(90deg)}100%{transform:rotate(0deg)}}';
+      document.head.appendChild(rs);
+    }
+    _rotateEl = document.createElement('div');
+    _rotateEl.id = 'nn-rotate-overlay';
+    _rotateEl.style.cssText = 'display:none;position:fixed;inset:0;z-index:10001;background:#020712;flex-direction:column;align-items:center;justify-content:center;gap:20px;padding:32px;box-sizing:border-box;font-family:system-ui,sans-serif;color:#cdeeff;text-align:center;';
+    _rotateEl.innerHTML = '<div style="font-size:64px;animation:nnRotatePhone 2.2s ease-in-out infinite;line-height:1">📱</div>'
+      + '<h2 style="margin:0;font-size:18px;font-weight:700;color:#eaf6ff;letter-spacing:.04em">Bitte Handy drehen</h2>'
+      + '<p style="margin:0;font-size:14px;color:rgba(140,200,230,.75);line-height:1.5">Jumping Nexus läuft<br>am besten quer.</p>';
+    document.body.appendChild(_rotateEl);
+  }
+  function _updateRotateOverlay() {
+    if (!_rotateEl) return;
+    _rotateEl.style.display = (window.matchMedia('(pointer:coarse)').matches && window.innerHeight > window.innerWidth) ? 'flex' : 'none';
+  }
+
   canvas.style.webkitTapHighlightColor = "transparent";
   canvas.style.webkitTouchCallout = "none";
   canvas.style.webkitUserSelect = "none";
@@ -160,12 +192,15 @@ document.addEventListener("DOMContentLoaded", () => {
     viewW = window.innerWidth;
     viewH = window.innerHeight;
 
-    // Force canvas CSS to match — overrides any container CSS
-    canvas.style.position = 'fixed';
-    canvas.style.top = '0';
-    canvas.style.left = '0';
-    canvas.style.width = viewW + 'px';
-    canvas.style.height = viewH + 'px';
+    // Force canvas CSS — use setAttribute so !important overrides any Webflow rule
+    canvas.setAttribute('style',
+      `position:fixed!important;top:0!important;left:0!important;` +
+      `width:${viewW}px!important;height:${viewH}px!important;` +
+      `z-index:9999!important;background:#02050c;` +
+      `touch-action:none;-webkit-tap-highlight-color:transparent;` +
+      `-webkit-user-select:none;user-select:none;outline:none;`
+    );
+    _updateRotateOverlay();
 
     canvas.width = Math.round(viewW * dpr);
     canvas.height = Math.round(viewH * dpr);
@@ -184,7 +219,7 @@ document.addEventListener("DOMContentLoaded", () => {
   }
 
   window.addEventListener("resize", resizeCanvas);
-  window.addEventListener("orientationchange", resizeCanvas);
+  window.addEventListener("orientationchange", () => { resizeCanvas(); _updateRotateOverlay(); });
   resizeCanvas();
 
   // ── WebAudio SFX ──────────────────────────────────────────────────────────
