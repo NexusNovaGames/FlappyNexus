@@ -50,6 +50,17 @@ document.addEventListener("DOMContentLoaded", () => {
   let viewOffsetX = 0;
   let viewOffsetY = 0;
   let dpr = 1;
+
+  function isMobile() {
+    return window.matchMedia("(pointer: coarse)").matches
+        && window.matchMedia("(max-width: 1024px)").matches;
+  }
+  function isPortrait() {
+    return window.innerHeight > window.innerWidth;
+  }
+  let mobileScale = isMobile() ? 1.3 : 1;
+  let _gameOverLockTimer = 0;
+  let _firstTapDone = false;
   const FONT_LINK =
     "https://fonts.googleapis.com/css2?family=Press+Start+2P&family=Source+Sans+3:wght@400;600&display=swap";
   if (!document.querySelector('link[data-jumping-font]')) {
@@ -154,6 +165,9 @@ document.addEventListener("DOMContentLoaded", () => {
     viewScale = Math.min(viewW / WORLD_W, viewH / WORLD_H);
     viewOffsetX = (viewW - WORLD_W * viewScale) / 2;
     viewOffsetY = (viewH - WORLD_H * viewScale) / 2;
+
+    mobileScale = isMobile() ? 1.3 : 1;
+    trailMaxLength = isMobile() ? 14 : 26;
   }
 
   window.addEventListener("resize", resizeCanvas);
@@ -880,7 +894,7 @@ const assets = {
 
   // Trail
   const trail = [];
-  const trailMaxLength = 26;
+  let trailMaxLength = isMobile() ? 14 : 26;
   let trailSampleTimer = 0;
   const trailSampleInterval = 0.03;
   let trailLoopPhase = 0;
@@ -1340,6 +1354,11 @@ Boss erscheint.`,
     return p.x >= r.x && p.x <= r.x + r.w && p.y >= r.y && p.y <= r.y + r.h;
   }
 
+  function pointInBtn(p, r) {
+    const pad = isMobile() ? 12 : 0;
+    return p.x >= r.x - pad && p.x <= r.x + r.w + pad && p.y >= r.y - pad && p.y <= r.y + r.h + pad;
+  }
+
   function handlePointerPress(event) {
     const p = getWorldPoint(event);
     if (!p || !p.inWorld) return;
@@ -1355,11 +1374,11 @@ Boss erscheint.`,
       return;
     }
 
-    if (audioMusicToggleRect && pointInRect(p, audioMusicToggleRect)) {
+    if (audioMusicToggleRect && pointInBtn(p, audioMusicToggleRect)) {
       audioToggleMusic();
       return;
     }
-    if (audioSfxToggleRect && pointInRect(p, audioSfxToggleRect)) {
+    if (audioSfxToggleRect && pointInBtn(p, audioSfxToggleRect)) {
       audioToggleSfx();
       return;
     }
@@ -1371,16 +1390,16 @@ Boss erscheint.`,
     }
 
     if (!gameRunning && !gameOver) {
-      if (introNameRect && pointInRect(p, introNameRect)) {
+      if (introNameRect && pointInBtn(p, introNameRect)) {
         introInputActive = true;
         introInputBlinkTimer = 0;
         return;
       }
-      if (nameButtonRect && pointInRect(p, nameButtonRect)) {
+      if (nameButtonRect && pointInBtn(p, nameButtonRect)) {
         showNameOverlay();
         return;
       }
-      if (startButtonRect && pointInRect(p, startButtonRect)) {
+      if (startButtonRect && pointInBtn(p, startButtonRect)) {
         _introButtonTap = 1;
         flap();
         return;
@@ -1390,15 +1409,18 @@ Boss erscheint.`,
     }
 
     if (gameOver) {
-      if (nameButtonRect && pointInRect(p, nameButtonRect)) {
+      if (nameButtonRect && pointInBtn(p, nameButtonRect)) {
         showNameOverlay();
         return;
       }
-      if (gameOverLinkRect && pointInRect(p, gameOverLinkRect)) {
+      if (gameOverLinkRect && pointInBtn(p, gameOverLinkRect)) {
         window.open("https://www.nexus-nova.de/karriere", "_blank", "noopener");
         return;
       }
     }
+
+    // Short input lock after game-over to prevent accidental instant restart
+    if (_gameOverLockTimer > 0) return;
 
     flap();
   }
@@ -1406,6 +1428,13 @@ Boss erscheint.`,
   canvas.addEventListener("mousedown", handlePointerPress);
 
   canvas.addEventListener("touchstart", e => {
+    // Ignore additional fingers — only handle the first touch
+    if (e.touches.length > 1) { e.preventDefault(); return; }
+    // Fullscreen on very first tap (browser requires user gesture)
+    if (!_firstTapDone) {
+      _firstTapDone = true;
+      try { document.documentElement.requestFullscreen?.().catch(() => {}); } catch (_) {}
+    }
     const p = getWorldPoint(e);
     handlePointerPress(e);
     if (p && p.inWorld) e.preventDefault();
@@ -1534,6 +1563,7 @@ Boss erscheint.`,
     playerShots.length = 0;
     bossLoot.length = 0;
     bossObstacles.length = 0;
+    _gameOverLockTimer = 0.25;
     _musicStop(0.6);
     setTimeout(() => { if (gameOver) _musicPlay('titleScreen'); }, 1400);
     highscore = Math.max(highscore, score);
@@ -3622,7 +3652,7 @@ Boss erscheint.`,
   }
 
   function spawnExplosion(x, y, color = "rgba(140,220,255,1)", power = 1) {
-    const count = Math.floor(12 * power);
+    const count = Math.floor(12 * power * (isMobile() ? 0.5 : 1));
     for (let i = 0; i < count; i++) {
       const angle = Math.random() * Math.PI * 2;
       const speed = 120 + Math.random() * 200 * power;
@@ -4401,27 +4431,28 @@ function drawUI() {
   const showLeaderboardPanel = gameOver && !gameRunning;
   let nameButtonCandidate = null;
 
+  const ms = mobileScale;
   ctx.textAlign = "left";
   ctx.textBaseline = "top";
   ctx.fillStyle = "#8fd3ff";
-  ctx.font = `600 14px ${SECONDARY_FONT}`;
+  ctx.font = `600 ${Math.round(14 * ms)}px ${SECONDARY_FONT}`;
   ctx.fillText(`Spieler: ${playerName || "---"}`, 16, 20);
 
   // Score with flash animation
   if (score !== lastDrawnScore) { scoreFlashTimer = 0.35; lastDrawnScore = score; }
   const scoreScale = 1 + (scoreFlashTimer > 0 ? 0.22 * (scoreFlashTimer / 0.35) : 0);
   ctx.save();
-  ctx.translate(16, 52);
+  ctx.translate(16, Math.round(52 * ms));
   ctx.scale(scoreScale, scoreScale);
-  ctx.font = `400 18px ${PRIMARY_FONT}`;
+  ctx.font = `400 ${Math.round(18 * ms)}px ${PRIMARY_FONT}`;
   ctx.fillStyle = scoreFlashTimer > 0 ? "#ffe066" : "#fff";
   if (scoreFlashTimer > 0) { ctx.shadowColor = "#ffe066"; ctx.shadowBlur = 14; }
   ctx.fillText(`Punkte: ${score}`, 0, 0);
   ctx.restore();
 
-  ctx.font = `600 14px ${SECONDARY_FONT}`;
+  ctx.font = `600 ${Math.round(14 * ms)}px ${SECONDARY_FONT}`;
   ctx.fillStyle = "#9ec9ff";
-  ctx.fillText(`Highscore: ${highscore}`, 16, 82);
+  ctx.fillText(`Highscore: ${highscore}`, 16, Math.round(82 * ms));
 
   if (inBossFight && currentBoss && currentBoss.id === 4 && currentBoss.phase === 2) {
     const secs = Math.max(0, Math.ceil(currentBoss.cutoverTimer));
@@ -4557,9 +4588,9 @@ function drawUI() {
 
   const hudLeft = 16;
   const TOTAL_HEARTS = 5;
-  const heartSize = 20;
-  const heartGap = 6;
-  const heartsTopY = WORLD_H - 118;
+  const heartSize = Math.round(20 * ms);
+  const heartGap = Math.round(6 * ms);
+  const heartsTopY = WORLD_H - Math.round(118 * ms);
 
   ctx.textAlign = "left";
   ctx.textBaseline = "middle";
@@ -4568,9 +4599,9 @@ function drawUI() {
   const heartColor = hpRatio > 0.5 ? "#8bff9c" : hpRatio > 0.25 ? "#ffd966" : "#ff5555";
 
   // HP label
-  ctx.font = `400 8px ${PRIMARY_FONT}`;
+  ctx.font = `400 ${Math.round(8 * ms)}px ${PRIMARY_FONT}`;
   ctx.fillStyle = hpRatio < 0.25 ? `rgba(255,85,85,${hpLowPulse})` : "rgba(255,255,255,0.55)";
-  ctx.fillText("HP", hudLeft, heartsTopY - 12);
+  ctx.fillText("HP", hudLeft, heartsTopY - Math.round(12 * ms));
 
   // Hearts
   const fullHearts = Math.floor(hpRatio * TOTAL_HEARTS);
@@ -4598,18 +4629,18 @@ function drawUI() {
   ctx.restore();
 
   // Armor segments
-  const armorTopY = heartsTopY + heartSize + 16;
+  const armorTopY = heartsTopY + heartSize + Math.round(16 * ms);
   const maxShield = player.maxHp * SHIELD_MAX_RATIO;
   const armorRatio = maxShield > 0 ? Math.min(1, player.shieldCharge / maxShield) : 0;
   const TOTAL_SEGS = 5;
-  const segW = 30;
-  const segH = 7;
-  const segGap = 3;
+  const segW = Math.round(30 * ms);
+  const segH = Math.round(7 * ms);
+  const segGap = Math.round(3 * ms);
 
-  ctx.font = `400 8px ${PRIMARY_FONT}`;
+  ctx.font = `400 ${Math.round(8 * ms)}px ${PRIMARY_FONT}`;
   ctx.textBaseline = "middle";
   ctx.fillStyle = "rgba(140,210,255,0.50)";
-  ctx.fillText("RST", hudLeft, armorTopY - 10);
+  ctx.fillText("RST", hudLeft, armorTopY - Math.round(10 * ms));
 
   const fullSegs = Math.round(armorRatio * TOTAL_SEGS);
   ctx.save();
@@ -4626,19 +4657,19 @@ function drawUI() {
   }
   ctx.restore();
 
-  const statusY = armorTopY + segH + 10;
+  const statusY = armorTopY + segH + Math.round(10 * ms);
   if (player.shieldHits > 0) {
     ctx.fillStyle = "#9ed8ff";
     ctx.textBaseline = "top";
-    ctx.font = `400 8px ${PRIMARY_FONT}`;
+    ctx.font = `400 ${Math.round(8 * ms)}px ${PRIMARY_FONT}`;
     ctx.fillText("SCHILD AKTIV", hudLeft, statusY);
   }
 
   if (player.lockTimer > 0) {
     ctx.fillStyle = "#ff5ad9";
     ctx.textBaseline = "top";
-    ctx.font = `400 8px ${PRIMARY_FONT}`;
-    ctx.fillText("LOCKING", hudLeft, statusY + (player.shieldHits > 0 ? 16 : 0));
+    ctx.font = `400 ${Math.round(8 * ms)}px ${PRIMARY_FONT}`;
+    ctx.fillText("LOCKING", hudLeft, statusY + (player.shieldHits > 0 ? Math.round(16 * ms) : 0));
   }
 
   if (showIntro) {
@@ -5201,7 +5232,7 @@ function drawUI() {
 
   // Audio toggle buttons — always visible, bottom-right corner
   {
-    const btnSize = 32;
+    const btnSize = Math.round(32 * ms);
     const gap = 6;
     const bx2 = WORLD_W - btnSize - 14;
     const bx1 = bx2 - btnSize - gap;
@@ -5351,6 +5382,7 @@ function drawUI() {
     rawDt = Math.min((ts - lastTime) / 1000, 0.05);
     const dt = gamePaused ? 0 : rawDt;
     lastTime = ts;
+    if (_gameOverLockTimer > 0) _gameOverLockTimer = Math.max(0, _gameOverLockTimer - rawDt);
     // Screen shake update
     if (shakeMag > 0) {
       shakeX = (Math.random() - 0.5) * shakeMag * 2;
