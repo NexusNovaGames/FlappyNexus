@@ -330,9 +330,10 @@ document.addEventListener("DOMContentLoaded", () => {
     musicVolume: 0.65,
     _pendingPlay: null,
     _titleIdx: 0,
+    _mainThemeIdx: 0,
     tracks: {
       titleScreen:   ['https://cdn.jsdelivr.net/gh/NexusNovaGames/FlappyNexus@main/assets/audio/title-screen-01.mp3', 'https://cdn.jsdelivr.net/gh/NexusNovaGames/FlappyNexus@main/assets/audio/title-screen-02.mp3'],
-      mainTheme:     ['https://cdn.jsdelivr.net/gh/NexusNovaGames/FlappyNexus@main/assets/audio/main-theme-01.mp3'],
+      mainTheme:     ['https://cdn.jsdelivr.net/gh/NexusNovaGames/FlappyNexus@main/assets/audio/main-theme-01.mp3', 'https://cdn.jsdelivr.net/gh/NexusNovaGames/FlappyNexus@main/assets/audio/main-theme-02.mp3', 'https://cdn.jsdelivr.net/gh/NexusNovaGames/FlappyNexus@main/assets/audio/main-theme-03.mp3', 'https://cdn.jsdelivr.net/gh/NexusNovaGames/FlappyNexus@main/assets/audio/main-theme-04.mp3', 'https://cdn.jsdelivr.net/gh/NexusNovaGames/FlappyNexus@main/assets/audio/main-theme-05.mp3'],
       preFinalBoss:  ['https://cdn.jsdelivr.net/gh/NexusNovaGames/FlappyNexus@main/assets/audio/pre-final-boss.mp3'],
       bossEncounter: ['https://cdn.jsdelivr.net/gh/NexusNovaGames/FlappyNexus@main/assets/audio/boss-encounter-01.mp3', 'https://cdn.jsdelivr.net/gh/NexusNovaGames/FlappyNexus@main/assets/audio/boss-encounter-02.mp3', 'https://cdn.jsdelivr.net/gh/NexusNovaGames/FlappyNexus@main/assets/audio/boss-encounter-03.mp3', 'https://cdn.jsdelivr.net/gh/NexusNovaGames/FlappyNexus@main/assets/audio/boss-encounter-04.mp3', 'https://cdn.jsdelivr.net/gh/NexusNovaGames/FlappyNexus@main/assets/audio/boss-encounter-05.mp3'],
       nnAnthem:      ['https://cdn.jsdelivr.net/gh/NexusNovaGames/FlappyNexus@main/assets/audio/nn-anthem.mp3'],
@@ -357,6 +358,7 @@ document.addEventListener("DOMContentLoaded", () => {
     const list = audio.tracks[key];
     if (!list || !list.length) return null;
     if (key === 'titleScreen') { const url = list[audio._titleIdx % list.length]; audio._titleIdx++; return url; }
+    if (key === 'mainTheme')   return list[audio._mainThemeIdx % list.length];
     if (key === 'bossEncounter') return list[Math.floor(Math.random() * list.length)];
     return list[0];
   }
@@ -2712,6 +2714,7 @@ Boss erscheint.`,
       gameOver = false; // Weiterfliegen für Highscore
       _musicPlay('nnAnthem');
     } else {
+      audio._mainThemeIdx++;
       _musicPlay('mainTheme');
     }
   }
