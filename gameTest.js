@@ -51,16 +51,19 @@ document.addEventListener("DOMContentLoaded", () => {
   let viewOffsetY = 0;
   let dpr = 1;
   const FONT_LINK =
-    "https://fonts.googleapis.com/css2?family=Orbitron:wght@400;600&family=Rajdhani:wght@400;600&display=swap";
-  if (!document.querySelector('link[data-flappy-font]')) {
+    "https://fonts.googleapis.com/css2?family=Press+Start+2P&family=Source+Sans+3:wght@400;600&display=swap";
+  if (!document.querySelector('link[data-jumping-font]')) {
     const fontLink = document.createElement("link");
     fontLink.rel = "stylesheet";
     fontLink.href = FONT_LINK;
-    fontLink.dataset.flappyFont = "true";
+    fontLink.dataset.jumpingFont = "true";
     document.head.appendChild(fontLink);
   }
-  const PRIMARY_FONT = "'Orbitron', 'Segoe UI', 'Helvetica Neue', sans-serif";
-  const SECONDARY_FONT = "'Rajdhani', 'Segoe UI', 'Helvetica Neue', sans-serif";
+  // PRIMARY_FONT (Press Start 2P) → Titles, score, game over, short button labels
+  // SECONDARY_FONT (Source Sans 3) → Body text, boss descriptions, long labels
+  const PRIMARY_FONT = "'Press Start 2P', monospace";
+  const SECONDARY_FONT = "'Source Sans 3', 'Source Sans Pro', sans-serif";
+  const BOSS_STORY_FONT_SIZE = 20; // adjust here to change boss description text size
   const SIZE_SCALE = 0.75;
   const PROJECTILE_SPEED_SCALE = 0.75;
   const PIPE_GAP_SCALE = 1.3;
@@ -157,6 +160,180 @@ document.addEventListener("DOMContentLoaded", () => {
   window.addEventListener("orientationchange", resizeCanvas);
   resizeCanvas();
 
+  // ── WebAudio SFX ──────────────────────────────────────────────────────────
+  let audioCtx = null;
+  function getAudioCtx() {
+    if (!audioCtx) {
+      try { audioCtx = new (window.AudioContext || window.webkitAudioContext)(); } catch (e) {}
+    }
+    if (audioCtx && audioCtx.state === 'suspended') audioCtx.resume();
+    return audioCtx;
+  }
+  function _tone(freq, type, dur, g0, g1, t0) {
+    const ac = getAudioCtx(); if (!ac) return;
+    const now = t0 !== undefined ? t0 : ac.currentTime;
+    const osc = ac.createOscillator();
+    const gain = ac.createGain();
+    osc.connect(gain); gain.connect(ac.destination);
+    osc.type = type; osc.frequency.setValueAtTime(freq, now);
+    gain.gain.setValueAtTime(g0, now);
+    gain.gain.exponentialRampToValueAtTime(Math.max(0.0001, g1), now + dur);
+    osc.start(now); osc.stop(now + dur + 0.02);
+  }
+  function sfxJump() {
+    if (!audio.sfxEnabled) return;
+    const ac = getAudioCtx(); if (!ac) return;
+    _tone(260, 'square', 0.07, 0.1, 0.001);
+    _tone(400, 'sine', 0.09, 0.07, 0.001, ac.currentTime + 0.035);
+  }
+  function sfxHit() {
+    if (!audio.sfxEnabled) return;
+    const ac = getAudioCtx(); if (!ac) return;
+    _tone(110, 'sawtooth', 0.18, 0.22, 0.001);
+    _tone(75, 'square', 0.14, 0.16, 0.001, ac.currentTime + 0.06);
+  }
+  function sfxPickup() {
+    if (!audio.sfxEnabled) return;
+    const ac = getAudioCtx(); if (!ac) return;
+    const t = ac.currentTime;
+    [440, 550, 700].forEach((f, i) => _tone(f, 'sine', 0.11, 0.09, 0.001, t + i * 0.055));
+  }
+  function sfxBossDeath() {
+    if (!audio.sfxEnabled) return;
+    const ac = getAudioCtx(); if (!ac) return;
+    const t = ac.currentTime;
+    const osc = ac.createOscillator(); const g = ac.createGain();
+    osc.connect(g); g.connect(ac.destination);
+    osc.type = 'sawtooth';
+    osc.frequency.setValueAtTime(200, t); osc.frequency.exponentialRampToValueAtTime(28, t + 0.9);
+    g.gain.setValueAtTime(0.28, t); g.gain.exponentialRampToValueAtTime(0.0001, t + 0.9);
+    osc.start(t); osc.stop(t + 0.95);
+    _tone(1000, 'sine', 0.35, 0.14, 0.001, t);
+    _tone(500, 'sine', 0.5, 0.1, 0.001, t + 0.1);
+  }
+  function sfxShoot() {
+    if (!audio.sfxEnabled) return;
+    _tone(580, 'square', 0.045, 0.065, 0.001);
+  }
+  // ──────────────────────────── MUSIC SYSTEM ──────────────────────────────────
+  const audio = {
+    musicEnabled: false,
+    sfxEnabled: false,
+    musicVolume: 0.65,
+    _pendingPlay: null,
+    _titleIdx: 0,
+    tracks: {
+      titleScreen:   ['assets/audio/title-screen-01.mp3', 'assets/audio/title-screen-02.mp3'],
+      mainTheme:     ['assets/audio/main-theme-01.mp3'],
+      preFinalBoss:  ['assets/audio/pre-final-boss.mp3'],
+      bossEncounter: ['assets/audio/boss-encounter-01.mp3', 'assets/audio/boss-encounter-02.mp3', 'assets/audio/boss-encounter-03.mp3', 'assets/audio/boss-encounter-04.mp3', 'assets/audio/boss-encounter-05.mp3'],
+      nnAnthem:      ['assets/audio/nn-anthem.mp3'],
+    },
+  };
+  let _musEl = null;      // active HTMLAudioElement
+  let _musKey = null;     // active track key
+  let _musOut = null;     // { el, from, dur, elapsed, onDone } — outgoing fade
+  let _musIn  = null;     // { el, to, dur, elapsed }           — incoming fade
+
+  function audioLoad() {
+    try {
+      const s = JSON.parse(localStorage.getItem('jumping-nexus-audio') || '{}');
+      audio.musicEnabled = s.music === true;
+      audio.sfxEnabled = s.sfx === true;
+    } catch (e) {}
+  }
+
+  function audioSave() {
+    try { localStorage.setItem('jumping-nexus-audio', JSON.stringify({ music: audio.musicEnabled, sfx: audio.sfxEnabled })); } catch (e) {}
+  }
+
+  function _pickTrack(key) {
+    const list = audio.tracks[key];
+    if (!list || !list.length) return null;
+    if (key === 'titleScreen') { const url = list[audio._titleIdx % list.length]; audio._titleIdx++; return url; }
+    if (key === 'bossEncounter') return list[Math.floor(Math.random() * list.length)];
+    return list[0];
+  }
+
+  function _musicPlay(key) {
+    if (!audio.musicEnabled) { audio._pendingPlay = key; return; }
+    if (_musKey === key && _musEl && !_musEl.paused) return;
+    const url = _pickTrack(key);
+    if (!url) return;
+
+    // Fade out current (sequential: new track starts in onDone)
+    function _startNew() {
+      const el = new Audio(url);
+      el.loop = true; el.volume = 0;
+      el.play().catch(() => {});
+      _musEl = el; _musKey = key;
+      _musIn = { el, to: audio.musicVolume, dur: 0.4, elapsed: 0 };
+    }
+
+    if (_musEl) {
+      const dying = _musEl;
+      _musEl = null; _musKey = null; _musIn = null;
+      _musOut = { el: dying, from: dying.volume, dur: 0.3, elapsed: 0, onDone: () => {
+        try { dying.pause(); dying.src = ''; } catch (e) {}
+        _startNew();
+      }};
+    } else {
+      _startNew();
+    }
+  }
+
+  function _musicStop(fadeDur) {
+    if (!_musEl) return;
+    const dying = _musEl;
+    _musEl = null; _musKey = null; _musIn = null;
+    const fd = fadeDur !== undefined ? fadeDur : 0.35;
+    _musOut = { el: dying, from: dying.volume, dur: fd, elapsed: 0, onDone: () => {
+      try { dying.pause(); dying.src = ''; } catch (e) {}
+    }};
+  }
+
+  function _musicPause() {
+    if (_musEl && !_musEl.paused) { _musEl.pause(); _musEl._paused = true; }
+  }
+
+  function _musicResume() {
+    if (_musEl && _musEl._paused) { _musEl.play().catch(() => {}); _musEl._paused = false; }
+  }
+
+  function _musicUpdate(rawDt) {
+    if (_musOut) {
+      _musOut.elapsed += rawDt;
+      const t = _musOut.dur > 0 ? Math.min(1, _musOut.elapsed / _musOut.dur) : 1;
+      try { _musOut.el.volume = Math.max(0, _musOut.from * (1 - t)); } catch (e) {}
+      if (t >= 1) { const done = _musOut.onDone; _musOut = null; if (done) done(); }
+    }
+    if (_musIn) {
+      _musIn.elapsed += rawDt;
+      const t = _musIn.dur > 0 ? Math.min(1, _musIn.elapsed / _musIn.dur) : 1;
+      try { _musIn.el.volume = Math.min(audio.musicVolume, _musIn.to * t); } catch (e) {}
+      if (t >= 1) _musIn = null;
+    }
+  }
+
+  function audioToggleMusic() {
+    audio.musicEnabled = !audio.musicEnabled;
+    audioSave();
+    if (!audio.musicEnabled) {
+      _musicStop(0.25);
+    } else {
+      if (audioCtx && audioCtx.state === 'suspended') audioCtx.resume();
+      const key = audio._pendingPlay || (!gameRunning && !gameOver ? 'titleScreen' : pendingBossId === 6 ? 'preFinalBoss' : inBossFight ? 'bossEncounter' : gameRunning ? 'mainTheme' : 'titleScreen');
+      audio._pendingPlay = null;
+      _musicPlay(key);
+    }
+  }
+
+  function audioToggleSfx() {
+    audio.sfxEnabled = !audio.sfxEnabled;
+    audioSave();
+  }
+  // ──────────────────────────────────────────────────────────────────────────
+
   function beginFrame() {
     ctx.setTransform(1, 0, 0, 1, 0, 0);
     ctx.fillStyle = "#000";
@@ -165,6 +342,8 @@ document.addEventListener("DOMContentLoaded", () => {
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
     ctx.translate(viewOffsetX, viewOffsetY);
     ctx.scale(viewScale, viewScale);
+    // Screen shake offset (integers only to avoid sub-pixel shimmer)
+    if (shakeMag > 0.1) ctx.translate(Math.round(shakeX), Math.round(shakeY));
   }
 
   function endFrame() {
@@ -236,17 +415,17 @@ document.addEventListener("DOMContentLoaded", () => {
         entry.highlightColor = pickHighlightColor();
       }
       return {
-        displayName: info.displayName || "Pilot",
+        displayName: info.displayName || "Spieler",
         color: entry && entry.highlightColor ? entry.highlightColor : pickHighlightColor(),
       };
     }
-    return { displayName: name || "Pilot", color: null };
+    return { displayName: name || "Spieler", color: null };
   }
 
   function persistPlayerName(name) {
     playerName = name;
     try {
-      localStorage.setItem("flappy-nexus-player-name", playerName);
+      localStorage.setItem("jumping-nexus-player-name", playerName);
     } catch (_) {
       /* ignore storage errors */
     }
@@ -279,7 +458,7 @@ document.addEventListener("DOMContentLoaded", () => {
     panel.style.textAlign = "center";
 
     const title = document.createElement("div");
-    title.textContent = "Pilotennamen festlegen";
+    title.textContent = "Spielernamen festlegen";
     title.style.fontFamily = PRIMARY_FONT;
     title.style.letterSpacing = "0.05em";
     title.style.fontSize = "22px";
@@ -377,7 +556,7 @@ document.addEventListener("DOMContentLoaded", () => {
     leaderboard = [];
     leaderboardScrollOffset = 0;
     try {
-      localStorage.removeItem("flappy-nexus-leaderboard");
+      localStorage.removeItem("jumping-nexus-leaderboard");
     } catch (_) {
       /* ignore storage errors */
     }
@@ -421,31 +600,38 @@ document.addEventListener("DOMContentLoaded", () => {
 
     ctx.save();
     ctx.translate(player.x, player.y);
-    ctx.lineWidth = 4;
-    ctx.font = `600 12px ${SECONDARY_FONT}`;
+    ctx.font = `600 11px ${SECONDARY_FONT}`;
     ctx.textAlign = "left";
     ctx.textBaseline = "middle";
 
-    const baseR = player.radius + 10;
+    // Start rings just outside the N.png visual boundary (sprite scale ~1.99 × radius)
+    const visualR = player.radius * 2.05;
+    const ringGap = 9;
     const textStartY = -effects.length * 7;
 
     effects.forEach((eff, idx) => {
       const time = player[eff.key];
       const ratio = Math.max(0, Math.min(1, time / eff.dur));
-      const r = baseR + idx * 6;
+      const r = visualR + idx * ringGap;
+      const pulseW = 3 + Math.sin(globalTime * 4 + idx) * 0.8;
 
-      ctx.strokeStyle = "rgba(255,255,255,0.12)";
+      ctx.lineWidth = pulseW;
+      ctx.strokeStyle = "rgba(255,255,255,0.1)";
       ctx.beginPath();
       ctx.arc(0, 0, r, 0, Math.PI * 2);
       ctx.stroke();
 
       ctx.strokeStyle = eff.color;
+      ctx.shadowColor = eff.color;
+      ctx.shadowBlur = 6;
       ctx.beginPath();
       ctx.arc(0, 0, r, -Math.PI / 2, -Math.PI / 2 + Math.PI * 2 * ratio);
       ctx.stroke();
+      ctx.shadowBlur = 0;
 
+      ctx.lineWidth = 1;
       ctx.fillStyle = eff.color;
-      ctx.fillText(`${eff.label} ${time.toFixed(1)}s`, r + 10, textStartY + idx * 14);
+      ctx.fillText(`${eff.label} ${time.toFixed(1)}s`, r + 8, textStartY + idx * 14);
     });
 
     ctx.restore();
@@ -488,16 +674,17 @@ const assets = {
   const LEADERBOARD_ENTRY_HEIGHT = 26;
   const LEADERBOARD_API_URL = "https://flappynexus.ricks-0c1.workers.dev";
   let lastTime = 0;
+  let rawDt = 0;
 
   try {
-    const stored = localStorage.getItem("flappy-nexus-highscore");
+    const stored = localStorage.getItem("jumping-nexus-highscore");
     if (stored) highscore = Number(stored) || 0;
   } catch (_) {
     highscore = 0;
   }
 
   try {
-    const storedBoard = localStorage.getItem("flappy-nexus-leaderboard");
+    const storedBoard = localStorage.getItem("jumping-nexus-leaderboard");
     if (storedBoard) {
       const parsed = JSON.parse(storedBoard);
       if (Array.isArray(parsed)) {
@@ -516,7 +703,7 @@ const assets = {
         if (!Array.isArray(data)) return;
         leaderboard = normalizeLeaderboard(data);
         try {
-          localStorage.setItem("flappy-nexus-leaderboard", JSON.stringify(leaderboard));
+          localStorage.setItem("jumping-nexus-leaderboard", JSON.stringify(leaderboard));
         } catch (_) {
           /* ignore */
         }
@@ -538,7 +725,7 @@ const assets = {
         if (!Array.isArray(data)) return;
         leaderboard = normalizeLeaderboard(data);
         try {
-          localStorage.setItem("flappy-nexus-leaderboard", JSON.stringify(leaderboard));
+          localStorage.setItem("jumping-nexus-leaderboard", JSON.stringify(leaderboard));
         } catch (_) {
           /* ignore */
         }
@@ -548,8 +735,13 @@ const assets = {
       });
   }
 
+  let introNameRect = null;
+  let introInputActive = false;
+  let introInputValue = "";
+  let introInputBlinkTimer = 0;
+
   try {
-    const storedName = localStorage.getItem("flappy-nexus-player-name");
+    const storedName = localStorage.getItem("jumping-nexus-player-name");
     if (storedName) {
       const safe = sanitizeName(storedName);
       if (safe) playerName = safe;
@@ -557,8 +749,10 @@ const assets = {
   } catch (_) {
     playerName = "";
   }
+  introInputValue = playerName || "";
 
   loadLeaderboardFromApi();
+  audioLoad();
 
   ensureNameOverlay();
   if (playerName) {
@@ -630,6 +824,8 @@ const assets = {
   let globalTime = 0;
   let gameOverAnimTimer = 0;
   let introAnimTimer = 0;
+  let scoreFlashTimer = 0;
+  let lastDrawnScore = -1;
   let finalCongratsTimer = 0;
   let scoreTauntText = "";
   let scoreTauntTimer = 0;
@@ -653,6 +849,31 @@ const assets = {
   let startButtonRect = null;
   let gameOverLinkRect = null;
   let nameButtonRect = null;
+  let audioMusicToggleRect = null;
+  let audioSfxToggleRect = null;
+  // Intro screen state
+  let _introStars = null;
+  let _introGlitchTimer = -(5 + Math.random() * 3);
+  let _introWinkTimer = -(3 + Math.random() * 2);
+  let _introButtonTap = 0;
+  // Screen shake
+  let shakeMag = 0;
+  let shakeDecay = 8;
+  let shakeX = 0;
+  let shakeY = 0;
+  function addShake(mag, decay) {
+    shakeMag = Math.max(shakeMag, mag);
+    shakeDecay = decay || 8;
+  }
+
+  // Hit flash (player)
+  let playerHitFlash = 0;
+
+  // Score popup pool  ("+N" floating text)
+  const scorePopups = [];
+
+  // Pause
+  let gamePaused = false;
 
   const SHIELD_CHARGE_RATE = 0.01;
   const SHIELD_MAX_RATIO = 0.25;
@@ -708,59 +929,51 @@ const assets = {
   const SCORE_TAUNT_STEP_MAX = 9;
   const PHASE_MILESTONE_COOLDOWN = 6;
   const NN_SCORE_TAUNTS = [
-    "Du bist ja immer noch da...",
-    "Geh endlich wieder schaffen!",
-    "Du hast starke Impulse",
-    "Das ist ein starker Impuls.",
+    // Klassiker — bleiben
     "F6 F6 F6 F6 F6 F7?!",
-    "Was'n hier los-",
     "Beste Firma der Welt <3",
-    "Kaffee ist alle- Weiterfliegen!",
-    "Legende in Ausbildung.",
-    "Die Deadline rennt mit.",
-    "Noch ein Sprint, dann Feierabend.",
-    "Highscore-Hunger aktiviert.",
-    "Sauerstoff wird knapp.",
-    "Du glitchst die Matrix.",
-    "Wolltest du nicht Feierabend machen-",
-    "Die Maustaste raucht.",
+    "Das ist kein Bug, das ist Feature!",
     "Unaufhaltsam.",
-    "Du fliegst wie ein Commit am Freitag.",
-    "Der Boss schaut schon nervös.",
+    "Kaffee ist alle- Weiterfliegen!",
+    "Dein Rekord hat Angst.",
+    "Die Maustaste raucht.",
+    "Checkpoint? Was ist das?",
+    "Du glitchst die Matrix.",
+    "Protokoll: Weiterfliegen.",
     "Break- Nicht heute.",
+    "Du bist der Sprint.",
+    "Patch ist raus, du auch?!",
     "Noch ein Versuch, noch ein Punkt.",
     "Produktivitätslevel: Overdrive.",
-    "Du bist der Sprint.",
-    "Das ist kein Bug, das ist Feature!",
-    "Patch ist raus, du auch?!",
-    "Regenbogen-Modus aktiviert.",
-    "Dein Rekord hat Angst.",
-    "Protokoll: Weiterfliegen.",
-    "Checkpoint? Was ist das?",
-    "Mr. Nova Nova.. :D",
+    "Highscore-Hunger aktiviert.",
+    "Sauerstoff wird knapp.",
+    "Du fliegst wie ein Commit am Freitag.",
+    "Der Boss schaut schon nervös.",
+    // Neue Varianten A+B
+    "Kein Meeting heute?",
+    "Ticket offen, Highscore wächst.",
+    "Feierabend? Nicht mit diesem Score.",
+    "Sprint-Abnahme kann warten.",
+    "Impuls-Management: deaktiviert.",
+    "Starke Impulskontrolle hättest du.",
+    "Jemand hat Alignment auf Highscore gesetzt.",
+    "Das Daily war vor einer Stunde.",
+    "Velocity: Übermensch.",
+    "Bald im Sprint-Review vorstellbar.",
+    "Das Burndown-Chart zeigt nur noch 'du'.",
+    "Letzte Story noch. Schon die zweite Stunde.",
+    "Sprint-Ende in 3s. Oder auch nicht.",
+    "NN bestätigt: nicht aufzuhalten.",
+    "Intern geclockt: Rekordverdächtig.",
 ];
 
   const BOSS_STORIES = {
     1: `Boss: "Scope Creeper"
 
-"Wir schauen uns das erstmal nur grob an."
+Discover. Ein Flipchart. Zwei Fragen.
+Und dann — "Könnten wir nicht auch...?"
 
-Ein harmloser Satz.
-Gesprochen zu Beginn von Discover.
-
-Doch irgendwo zwischen Flipchart, Whiteboard und dem ersten
-"Nur mal kurz prüfen..."
-begann sich etwas zu regen.
-
-Ein Gedanke wurde zu einer Frage.
-Eine Frage zu einer Anforderung.
-Eine Anforderung zu vielen.
-
-Plötzlich war er da.
-
-Scope Creeper.
-
-Er wächst von jedem "Könnten wir nicht auch...?"
+Er wächst von jedem ungeplanten Wunsch.
 Er nährt sich von Zeit und Budget.
 Und je länger ihr zögert, desto mehr spawnt er.
 
@@ -769,161 +982,56 @@ Fokus schwindet. Entscheidungen werden weich.
 Boss erscheint.`,
     2: `Boss: "Lord Chaos Governance"
 
-Prepare begann mit guten Absichten.
+Prepare. Alle im Meeting. Keiner entscheidet.
+"Wir klären die Rollen später." — und später kam nie.
 
-Ein Projektplan.
-Viele Streams.
-Und der Satz:
-
-"Wir klären die Rollen später."
-
-Doch "später" kam nie.
-
-Entscheidungen blieben offen.
-Verantwortlichkeiten verschwammen.
-Alles lief parallel - aber nichts zusammen.
-
-Meetings wurden länger.
-Ergebnisse kürzer.
-Und jeder wartete darauf, dass jemand anderes entscheidet.
-
-Aus dieser Unordnung erhob sich:
-
-Lord Chaos Governance.
-
-Er blockiert jeden Fortschritt.
-Er nährt sich von offenen Punkten.
-Und je mehr ihr abstimmt, desto stärker wird er.
+Entscheidungen blieben offen. Verantwortlichkeiten verschwammen.
+Er lebt von offenen Punkten und endlosen Abstimmungsrunden.
 
 Der Kalender füllt sich. Das Projekt steht still.
 
 Boss erscheint.`,
     3: `Boss: "Fit-to-Standard Hydra"
 
-Explore begann mit einem Ziel:
-
-"Wir orientieren uns am Standard."
-
-Doch dann kam der erste Gap.
-Dann ein zweiter.
-Und dann der Satz:
-
-"Das haben wir schon immer so gemacht."
-
+Explore. "Das haben wir schon immer so gemacht."
 Mit jedem abgeschlagenen Gap wuchsen zwei neue nach.
-Workshops wurden länger.
-Blueprints dicker.
-Der Standard immer weiter weg.
 
-Aus Prozessen wurden Sonderfälle.
-Aus Entscheidungen Designs.
-Aus Einfachheit Overengineering.
-
-Aus all dem kroch sie hervor:
-
-Die Fit-to-Standard Hydra.
-
-Sie vervielfacht Gaps.
-Sie verführt mit perfekten Lösungen.
-Und jeder Versuch, sie "sauber" zu lösen, macht sie stärker.
-
-Der Standard droht zu verschwinden.
+Workshops wurden länger. Blueprints dicker.
+Aus Einfachheit wurde Overengineering.
+Der Standard? Längst aus dem Blick.
 
 Boss erscheint.`,
     4: `Boss: "Migration Minotaur"
 
-Realize fühlte sich kontrolliert an.
-
-Customizing stand.
-Entwicklungen liefen.
-Und jemand sagte:
-
 "Die Daten migrieren wir später."
+TM1 läuft. TM2 läuft. Nichts mehr läuft.
 
-Doch tief im System wartete bereits etwas.
-
-Versteckt im Labyrinth der Altdaten.
-Genährt von Dubletten, Lücken und Altlasten.
-Unauffällig - bis zur ersten Testmigration.
-
-TM1 ließ ihn kurz aufblitzen.
-TM2 weckte ihn vollständig.
-
-Fehler explodierten.
-Fixing-Schleifen begannen.
-Zeit verschwand im Datennebel.
-
-Aus dem Migrationslabyrinth trat hervor:
-
-Der Migration Minotaur.
-
-Er frisst saubere Zeitpläne.
-Er liebt unklare Objektketten.
-Und jeder ungeprüfte Datensatz macht ihn stärker.
+Fehler explodierten. Fixing-Schleifen begannen.
+Tief im Labyrinth der Altdaten, genährt von Dubletten und Altlasten,
+erwacht der Migration Minotaur.
 
 Der Weg zum Go-Live wird enger.
 
 Boss erscheint.`,
     5: `Boss: "Cut-over Kraken"
 
-Deploy begann in Stille.
-
-Systeme waren bereit.
-Jobs geplant.
-Und der Countdown lief.
-
-"Wir haben alles vorbereitet."
-
-Doch unter der Oberfläche bewegte sich etwas.
-
-Viele Arme.
-Viele Systeme.
-Viele Marktpartner.
-
-Ein falscher Schritt -
-und alles gerät gleichzeitig in Bewegung.
-
-Jobs kollidieren.
-Schnittstellen reißen.
+Deploy. Countdown läuft. Schnittstellen zittern.
+Jobs kollidieren. Interfaces reißen.
 Seiteneffekte schlagen dort zu, wo niemand hinsieht.
 
-Aus dem Cut-over-Fenster erhebt sich:
-
-Der Cut-over Kraken.
-
-Er kennt keinen Rückzug.
-Er verzeiht keinen Fehler.
-Und jede Sekunde macht ihn stärker.
+Er streckt seine Arme in alle Systeme gleichzeitig.
+Er kennt keinen Rückzug. Er verzeiht keinen Fehler.
 
 Keine zweite Chance. Der Go-Live steht bevor.
 
 Boss erscheint.`,
     6: `Boss: "Legacy Phantom"
 
-Der Go-Live ist geschafft.
-
-Systeme laufen.
-Tickets werden weniger.
-Und jemand sagt:
-
 "Zur Sicherheit lassen wir das Altsystem noch an."
-
 Niemand merkt, wie sich etwas löst.
 
-Ein Prozess im Hintergrund.
-Ein manueller Workaround.
-Ein Bericht, der "nur dort" noch existiert.
-
-Schattenprozesse entstehen.
-Ressourcen verschwinden.
-Innovation wird langsam.
-
-Aus den alten Pfaden erhebt sich:
-
-Das Legacy Phantom.
-
-Es ist schwer zu sehen.
-Es greift leise an.
+Schattenprozesse entstehen. Ressourcen verschwinden.
+Es ist schwer zu sehen. Es greift leise an.
 Und solange es existiert, zieht es euch zurück.
 
 Die Zukunft bleibt stehen, solange die Vergangenheit lebt.
@@ -1130,14 +1238,23 @@ Boss erscheint.`,
 
   function flap() {
     if (!gameRunning && !gameOver) {
+      // Save intro name input before starting
+      if (introInputActive || introInputValue.trim()) {
+        const trimmed = sanitizeName(introInputValue.trim());
+        if (trimmed) persistPlayerName(trimmed);
+      }
+      introInputActive = false;
       resetGame();
       gameRunning = true;
+      _musicPlay('mainTheme');
     } else if (gameOver) {
       resetGame();
       gameRunning = true;
+      _musicPlay('mainTheme');
     }
 
     player.vy = player.jumpStrength;
+    sfxJump();
     flapCount++;
     totalFlaps++;
 
@@ -1163,7 +1280,37 @@ Boss erscheint.`,
   }
 
   window.addEventListener("keydown", e => {
-    if (e.repeat) return; // kein Halten-Spammen
+    if (e.repeat && !(introInputActive && e.key === "Backspace")) return;
+    // Pause toggle
+    if (e.key === "Escape" || e.key === "p" || e.key === "P") {
+      if (gameRunning && !gameOver && !pendingBossId) {
+        gamePaused = !gamePaused;
+        if (gamePaused) _musicPause(); else _musicResume();
+        e.preventDefault();
+        return;
+      }
+    }
+    if (gamePaused) return;
+    // Capture text input when intro name field is focused
+    if (introInputActive && !gameRunning && !gameOver) {
+      if (e.key === "Enter") {
+        const trimmed = sanitizeName(introInputValue.trim());
+        if (trimmed) persistPlayerName(trimmed);
+        else { playerName = introInputValue.trim() || "Spieler"; introInputValue = playerName; }
+        introInputActive = false;
+        e.preventDefault();
+        return;
+      }
+      if (e.key === "Escape") { introInputActive = false; e.preventDefault(); return; }
+      if (e.key === "Backspace") { introInputValue = introInputValue.slice(0, -1); introInputBlinkTimer = 0; e.preventDefault(); return; }
+      if (e.key.length === 1 && introInputValue.length < MAX_NAME_LENGTH) {
+        introInputValue += e.key;
+        introInputBlinkTimer = 0;
+        e.preventDefault();
+        return;
+      }
+      if (e.code === "Space") { e.preventDefault(); return; } // don't flap while typing
+    }
     if (e.code === "Space" || e.code === "ArrowUp") {
     if (pendingBossId) {
       if (bossAwaitingConfirm) {
@@ -1208,15 +1355,38 @@ Boss erscheint.`,
       return;
     }
 
+    if (audioMusicToggleRect && pointInRect(p, audioMusicToggleRect)) {
+      audioToggleMusic();
+      return;
+    }
+    if (audioSfxToggleRect && pointInRect(p, audioSfxToggleRect)) {
+      audioToggleSfx();
+      return;
+    }
+
+    // Unlock audio context + start title music on first interaction (if enabled & on intro screen)
+    if (audioCtx && audioCtx.state === 'suspended') audioCtx.resume();
+    if (audio.musicEnabled && !_musEl && !gameRunning && !gameOver) {
+      _musicPlay('titleScreen');
+    }
+
     if (!gameRunning && !gameOver) {
+      if (introNameRect && pointInRect(p, introNameRect)) {
+        introInputActive = true;
+        introInputBlinkTimer = 0;
+        return;
+      }
       if (nameButtonRect && pointInRect(p, nameButtonRect)) {
         showNameOverlay();
         return;
       }
       if (startButtonRect && pointInRect(p, startButtonRect)) {
+        _introButtonTap = 1;
         flap();
         return;
       }
+      // Deactivate name input if clicking elsewhere
+      introInputActive = false;
     }
 
     if (gameOver) {
@@ -1255,8 +1425,14 @@ Boss erscheint.`,
     score = TEST_BOSS3 ? Math.max(0, BOSS3_SCORE - 5) : 0;
     gameOver = false;
     gameRunning = false;
+    gamePaused = false;
     gameOverAnimTimer = 0;
     introAnimTimer = 0;
+    introInputBlinkTimer = 0;
+    introInputActive = false;
+    introInputValue = playerName || "";
+    scoreFlashTimer = 0;
+    lastDrawnScore = -1;
     inBossFight = false;
     currentBoss = null;
     pendingBossId = null;
@@ -1338,6 +1514,9 @@ Boss erscheint.`,
     phaseTextWidth = 0;
     phaseTextActive = false;
     phaseTextDone = new Array(PHASE_TEXTS.length).fill(false);
+    scorePopups.length = 0;
+    shakeMag = 0; shakeX = 0; shakeY = 0;
+    playerHitFlash = 0;
   }
 
   function endGame() {
@@ -1355,9 +1534,10 @@ Boss erscheint.`,
     playerShots.length = 0;
     bossLoot.length = 0;
     bossObstacles.length = 0;
+    _musicStop(0.6);
     highscore = Math.max(highscore, score);
     try {
-      localStorage.setItem("flappy-nexus-highscore", String(highscore));
+      localStorage.setItem("jumping-nexus-highscore", String(highscore));
     } catch (_) {
       /* ignore */
     }
@@ -1367,13 +1547,13 @@ Boss erscheint.`,
   function normalizeLeaderboard(entries) {
     const bestByName = new Map();
     for (const entry of entries || []) {
-      let name = "Pilot";
+      let name = "Spieler";
       let score = 0;
       let highlightColor = null;
       if (typeof entry === "number") {
         score = Number(entry);
       } else if (entry && typeof entry.score === "number") {
-        name = sanitizeName(entry.name || "") || "Pilot";
+        name = sanitizeName(entry.name || "") || "Spieler";
         score = Number(entry.score) || 0;
         if (typeof entry.highlightColor === "string") {
           highlightColor = entry.highlightColor;
@@ -1400,11 +1580,11 @@ Boss erscheint.`,
   }
 
   function updateLeaderboard(value) {
-    const entryName = sanitizeName(playerName) || "Pilot";
+    const entryName = sanitizeName(playerName) || "Spieler";
     if (entryName === "WIPE") {
       leaderboard = [];
       try {
-        localStorage.setItem("flappy-nexus-leaderboard", JSON.stringify(leaderboard));
+        localStorage.setItem("jumping-nexus-leaderboard", JSON.stringify(leaderboard));
       } catch (_) {
         /* ignore */
       }
@@ -1415,7 +1595,7 @@ Boss erscheint.`,
     const entry = { name: entryName, score: value };
     leaderboard = normalizeLeaderboard([...leaderboard, entry]);
     try {
-      localStorage.setItem("flappy-nexus-leaderboard", JSON.stringify(leaderboard));
+      localStorage.setItem("jumping-nexus-leaderboard", JSON.stringify(leaderboard));
     } catch (_) {
       /* ignore */
     }
@@ -1470,10 +1650,10 @@ Boss erscheint.`,
 
   function wrapTextLines(text, maxWidth) {
     if (!text) return [];
-    const rawLines = String(text).split(/\r\n/);
+    const rawLines = String(text).split(/\r?\n/);
     const lines = [];
     ctx.save();
-    ctx.font = `600 18px ${SECONDARY_FONT}`;
+    ctx.font = `600 ${BOSS_STORY_FONT_SIZE}px ${SECONDARY_FONT}`;
     for (const raw of rawLines) {
       if (!raw.trim()) {
         lines.push("");
@@ -1669,8 +1849,12 @@ Boss erscheint.`,
       if (amount <= 0) return;
     }
     player.hp -= amount;
+    sfxHit();
+    playerHitFlash = 5;
+    addShake(4, 9);
     player.debuffGraceTimer = 0.6;
     if (player.hp <= 0) {
+      addShake(10, 6);
       endGame();
     }
   }
@@ -1977,6 +2161,7 @@ Boss erscheint.`,
         p.passed = true;
         const add = player.doubleTimer > 0 ? 2 : 1;
         score += add;
+        scorePopups.push({ x: player.x, y: player.y - 30, life: 0.75, text: `+${add}` });
         const hueStep = Math.floor(score / 10);
         if (hueStep > lastScoreHueStep) {
           lastScoreHueStep = hueStep;
@@ -2020,6 +2205,7 @@ Boss erscheint.`,
 
       if (!b.collected && dist < player.radius + b.size * 0.6) {
         b.collected = true;
+        sfxPickup();
         const colors = {
           ghost: "rgba(160,220,255,1)",
           shrink: "rgba(120,255,180,1)",
@@ -2064,6 +2250,7 @@ Boss erscheint.`,
   //  Bosses & Projectiles
   // ======================================================
   function shootPlayerProjectile() {
+    sfxShoot();
     const shots = [];
     if (player.weaponMode === "spread" && player.ammoSpread > 0) {
       player.ammoSpread--;
@@ -2144,8 +2331,8 @@ Boss erscheint.`,
         vy: 0,
         width: 220,
         height: 220,
-        hp: Math.round(45 * diff),
-        maxHp: Math.round(45 * diff),
+        hp: Math.round(56 * diff),
+        maxHp: Math.round(56 * diff),
         shotTimer: 0,
         shotInterval: (1.0 / (1 + bossStage * 0.05)) * 2.5,
         img: assets.boss1,
@@ -2168,8 +2355,8 @@ Boss erscheint.`,
       vy: 0,
       width: 260,
       height: 260,
-      hp: Math.round(80 * diff),
-      maxHp: Math.round(80 * diff),
+      hp: Math.round(100 * diff),
+      maxHp: Math.round(100 * diff),
       shotTimer: 0,
       shotInterval: (0.65 / (1 + bossStage * 0.08)) * 2.5,
       img: assets.boss2,
@@ -2192,8 +2379,8 @@ Boss erscheint.`,
         vy: 0,
         width: 320,
         height: 320,
-        hp: Math.round(280 * (1 + bossStage * 0.2)),
-        maxHp: Math.round(280 * (1 + bossStage * 0.2)),
+        hp: Math.round(350 * (1 + bossStage * 0.2)),
+        maxHp: Math.round(350 * (1 + bossStage * 0.2)),
         shotTimer: 0,
         shotInterval: 1.1,
         img: assets.boss5,
@@ -2220,8 +2407,8 @@ Boss erscheint.`,
         vy: 0,
         width: 340,
         height: 340,
-        hp: Math.round(360 * (1 + bossStage * 0.2)),
-        maxHp: Math.round(360 * (1 + bossStage * 0.2)),
+        hp: Math.round(450 * (1 + bossStage * 0.2)),
+        maxHp: Math.round(450 * (1 + bossStage * 0.2)),
         shotTimer: 0,
         shotInterval: 0.95,
         img: assets.boss4,
@@ -2247,8 +2434,8 @@ Boss erscheint.`,
         vy: 0,
         width: 380,
         height: 380,
-        hp: Math.round(460 * (1 + bossStage * 0.25)),
-        maxHp: Math.round(460 * (1 + bossStage * 0.25)),
+        hp: Math.round(575 * (1 + bossStage * 0.25)),
+        maxHp: Math.round(575 * (1 + bossStage * 0.25)),
         shotTimer: 0,
         shotInterval: 0.8,
       img: assets.boss6 && assets.boss6.complete ? assets.boss6 : assets.boss3 && assets.boss3.complete ? assets.boss3 : assets.boss2,
@@ -2274,8 +2461,8 @@ Boss erscheint.`,
       vy: 0,
       width: 300,
       height: 300,
-      hp: Math.round(180 * (1 + bossStage * 0.12)),
-      maxHp: Math.round(180 * (1 + bossStage * 0.12)),
+      hp: Math.round(225 * (1 + bossStage * 0.12)),
+      maxHp: Math.round(225 * (1 + bossStage * 0.12)),
       shotTimer: 0,
       shotInterval: (0.65 / (1 + bossStage * 0.1)) * 2.5,
       img: assets.boss3 && assets.boss3.complete ? assets.boss3 : assets.boss2,
@@ -2299,6 +2486,7 @@ Boss erscheint.`,
   function startBossFight(id) {
     inBossFight = true;
     currentBoss = createBoss(id);
+    _musicPlay('bossEncounter');
     nnTauntActive = false;
     nnTauntText = "";
     currentBoss.lootTimer = 1.6;
@@ -2333,34 +2521,41 @@ Boss erscheint.`,
 
   function defeatBoss(id) {
     if (!currentBoss) return;
-    spawnExplosion(currentBoss.x, currentBoss.y, "rgba(255,255,255,1)", 2.2);
+    spawnBossDeathExplosion(currentBoss.x, currentBoss.y);
+    sfxBossDeath();
 
     if (id === 1) {
       boss1Defeated = true;
       score += 10;
+      scorePopups.push({ x: WORLD_W / 2, y: WORLD_H / 2 - 60, life: 1.2, text: '+10 BOSS BESIEGT!' });
       if (!checkPhaseMilestones()) checkScoreTaunts();
     } else if (id === 2) {
       boss2Defeated = true;
       score += 20;
+      scorePopups.push({ x: WORLD_W / 2, y: WORLD_H / 2 - 60, life: 1.2, text: '+20 BOSS BESIEGT!' });
       if (!checkPhaseMilestones()) checkScoreTaunts();
     } else if (id === 3) {
       boss3Defeated = true;
       score += 30;
+      scorePopups.push({ x: WORLD_W / 2, y: WORLD_H / 2 - 60, life: 1.2, text: '+30 BOSS BESIEGT!' });
       if (!checkPhaseMilestones()) checkScoreTaunts();
-      finalCongratsTimer = 8; // Glückwunschbanner anzeigen
+      finalCongratsTimer = 8;
     } else if (id === 4) {
       boss4Defeated = true;
       score += 40;
+      scorePopups.push({ x: WORLD_W / 2, y: WORLD_H / 2 - 60, life: 1.2, text: '+40 BOSS BESIEGT!' });
       if (!checkPhaseMilestones()) checkScoreTaunts();
       finalCongratsTimer = 8;
     } else if (id === 5) {
       boss5Defeated = true;
       score += 50;
+      scorePopups.push({ x: WORLD_W / 2, y: WORLD_H / 2 - 60, life: 1.2, text: '+50 BOSS BESIEGT!' });
       if (!checkPhaseMilestones()) checkScoreTaunts();
       finalCongratsTimer = 8;
     } else if (id === 6) {
       boss6Defeated = true;
       score += 60;
+      scorePopups.push({ x: WORLD_W / 2, y: WORLD_H / 2 - 60, life: 1.2, text: '+60 BOSS BESIEGT!' });
       if (!checkPhaseMilestones()) checkScoreTaunts();
       finalCongratsTimer = 8;
     }
@@ -2392,6 +2587,9 @@ Boss erscheint.`,
       gameWon = true;
       gameRunning = true;
       gameOver = false; // Weiterfliegen für Highscore
+      _musicPlay('nnAnthem');
+    } else {
+      _musicPlay('mainTheme');
     }
   }
 
@@ -2435,6 +2633,7 @@ Boss erscheint.`,
       player.vy = 0;
       player.debuffGraceTimer = 0.2;
       setPendingBossStory(6);
+      _musicPlay('preFinalBoss');
     }
   }
 
@@ -2443,9 +2642,33 @@ Boss erscheint.`,
 
     const boss = currentBoss;
     boss.t += dt;
-    const amp = 120;
-    boss.y = WORLD_H / 2 + Math.sin(boss.t * 1.1) * amp;
-    boss.x = BOSS_X_BASE + Math.sin(boss.t * 0.6) * BOSS_X_WOBBLE;
+    const hpRatioMove = boss.maxHp > 0 ? boss.hp / boss.maxHp : 0;
+    let newX, newY;
+    if (boss.id === 1) {
+      newY = WORLD_H / 2 + Math.sin(boss.t * 0.9) * 100 + Math.sin(boss.t * 2.1) * 22;
+      newX = BOSS_X_BASE + Math.sin(boss.t * 0.5) * BOSS_X_WOBBLE;
+    } else if (boss.id === 2) {
+      newY = WORLD_H / 2 + Math.sin(boss.t * 1.4) * 110 + Math.sin(boss.t * 3.1) * 28;
+      newX = BOSS_X_BASE + Math.sin(boss.t * 0.75) * (BOSS_X_WOBBLE * 1.5);
+    } else if (boss.id === 3) {
+      newY = WORLD_H / 2 + Math.sin(boss.t * 2.1) * 88 + Math.sin(boss.t * 5.0) * 18;
+      newX = BOSS_X_BASE + Math.sin(boss.t * 1.2) * BOSS_X_WOBBLE;
+    } else if (boss.id === 4) {
+      newY = WORLD_H / 2 + Math.sin(boss.t * 0.65) * 135;
+      newX = BOSS_X_BASE + Math.sin(boss.t * 0.38) * BOSS_X_WOBBLE;
+    } else if (boss.id === 5) {
+      newY = WORLD_H / 2 + Math.sin(boss.t * 1.05) * 148 + Math.sin(boss.t * 1.85) * 38;
+      newX = BOSS_X_BASE + Math.sin(boss.t * 0.82) * (BOSS_X_WOBBLE * 1.3);
+    } else if (boss.id === 6) {
+      const fury = 1 + (1 - hpRatioMove) * 0.55;
+      newY = WORLD_H / 2 + Math.sin(boss.t * 1.25 * fury) * 125 + Math.sin(boss.t * 2.7 * fury) * 33;
+      newX = BOSS_X_BASE + Math.sin(boss.t * 0.92 * fury) * (BOSS_X_WOBBLE * 1.8);
+    } else {
+      newY = WORLD_H / 2 + Math.sin(boss.t * 1.1) * 120;
+      newX = BOSS_X_BASE + Math.sin(boss.t * 0.6) * BOSS_X_WOBBLE;
+    }
+    boss.y = Math.max(80, Math.min(WORLD_H - 80, newY));
+    boss.x = Math.max(WORLD_W - 160, Math.min(WORLD_W - 20, newX));
 
     if (boss.id === 4) {
       boss.phaseTimer += dt;
@@ -2534,9 +2757,8 @@ Boss erscheint.`,
       }
 
     boss.shotTimer += dt;
-    if (boss.bigBugCooldown > 0) {
-      boss.bigBugCooldown -= dt;
-    }
+    if (boss.bigBugCooldown > 0) boss.bigBugCooldown -= dt;
+    if (boss.clusterCooldown > 0) boss.clusterCooldown -= dt;
     if (boss.shotTimer >= boss.shotInterval) {
       boss.shotTimer = 0;
       if (boss.id === 4) {
@@ -2725,6 +2947,11 @@ Boss erscheint.`,
         // abgeschwaechte Spiral volley + Donut
         if (boss.phase < 2) {
           shootBossProjectile(boss, 0, 520);
+          // Vertical pillar: shots from top+bottom at player X
+          const px = Math.max(60, Math.min(WORLD_W - 200, player.x));
+          const pSpeed = 420 * PROJECTILE_SPEED_SCALE;
+          bossShots.push({ x: px, y: -30, vx: 0, vy: pSpeed, life: 3, age: 0, size: 13, type: "shard" });
+          bossShots.push({ x: px, y: WORLD_H + 30, vx: 0, vy: -pSpeed, life: 3, age: 0, size: 13, type: "shard" });
         } else {
           const count = boss.phase >= 3 ? 8 : 6;
           for (let k = 0; k < count; k++) {
@@ -2734,6 +2961,13 @@ Boss erscheint.`,
           for (let k = 0; k < count; k++) {
             const a = (Math.PI * 2 * k) / count + boss.t * 0.5;
             shootBossProjectile(boss, a, boss.phase >= 3 ? 380 : 340);
+          }
+          // Phase 2+: 3 converging pillar pairs at spread X positions
+          const pSpeed2 = (boss.phase >= 3 ? 500 : 440) * PROJECTILE_SPEED_SCALE;
+          for (let k = 0; k < 2; k++) {
+            const px = Math.max(60, Math.min(WORLD_W - 200, player.x + (k - 0.5) * 120));
+            bossShots.push({ x: px, y: -30, vx: 0, vy: pSpeed2, life: 3, age: 0, size: 13, type: "shard" });
+            bossShots.push({ x: px, y: WORLD_H + 30, vx: 0, vy: -pSpeed2, life: 3, age: 0, size: 13, type: "shard" });
           }
         }
       } else if (boss.attackMode === 6 && boss.id === 3) {
@@ -2819,6 +3053,24 @@ Boss erscheint.`,
         // Maschinengewehr kurzer Burst
         boss.burstCount = 0;
         boss.machineGun = true;
+      } else if (boss.attackMode === 6 && boss.id === 2) {
+        // Mirror shots: fire from boss AND mirrored from left edge
+        shootBossProjectile(boss, 0, 500);
+        shootBossProjectile(boss, 0.22, 480);
+        shootBossProjectile(boss, -0.22, 480);
+        const mSpeed = 460 * PROJECTILE_SPEED_SCALE;
+        for (let k = -1; k <= 1; k++) {
+          bossShots.push({
+            x: 20,
+            y: boss.y + k * 70 + (Math.random() * 40 - 20),
+            vx: mSpeed,
+            vy: 0,
+            life: 4,
+            age: 0,
+            size: 10,
+            type: "shard",
+          });
+        }
       } else if (boss.attackMode === 4 && boss.id >= 5) {
         const speed = 520 * PROJECTILE_SPEED_SCALE;
         const count = boss.id === 6 ? 6 : 5;
@@ -2899,6 +3151,43 @@ Boss erscheint.`,
           boss.burstCount = 0;
           boss.machineGun = true;
         }
+      } else if (boss.attackMode === 3 && boss.id === 1) {
+        // Boss 1: Homing burst — 4 seekers with short tracking phase
+        for (let k = 0; k < 4; k++) {
+          const a = -0.3 + k * 0.2;
+          const speed = (380 + bossStage * 12) * PROJECTILE_SPEED_SCALE;
+          bossShots.push({
+            x: boss.x - boss.width / 2,
+            y: boss.y + (Math.random() * 80 - 40),
+            vx: -Math.cos(a) * speed,
+            vy: Math.sin(a) * speed,
+            life: 5,
+            age: 0,
+            size: 11,
+            type: "seeker",
+            homingDuration: 0.42,
+          });
+        }
+      } else if (boss.attackMode === 8 && boss.id === 5) {
+        // Boss 5 Phase 2: Cluster bombs that split into 6 sub-shots
+        const hpRatio5 = boss.maxHp > 0 ? boss.hp / boss.maxHp : 1;
+        if (hpRatio5 <= 0.6 && (boss.clusterCooldown === undefined || boss.clusterCooldown <= 0)) {
+          const count = 2;
+          for (let k = 0; k < count; k++) {
+            bossShots.push({
+              x: boss.x - boss.width / 2,
+              y: boss.y + (Math.random() * 160 - 80),
+              vx: -200 * PROJECTILE_SPEED_SCALE,
+              vy: (Math.random() - 0.5) * 50 * PROJECTILE_SPEED_SCALE,
+              life: 4,
+              age: 0,
+              size: 20,
+              type: "cluster",
+              splitDelay: 0.9 + Math.random() * 0.4,
+            });
+          }
+          boss.clusterCooldown = 2.5;
+        }
       } else if (boss.attackMode === 8 && boss.id === 6) {
         if (boss.bigBugCooldown <= 0) {
           const speed = 260 * PROJECTILE_SPEED_SCALE;
@@ -2977,10 +3266,10 @@ Boss erscheint.`,
       boss.attackModeTimer = 0;
       const maxMode =
         boss.id === 6 ? 9 :
-        boss.id === 5 ? 8 :
+        boss.id === 5 ? 9 :
         boss.id === 4 ? 10 :
         boss.id === 3 ? (boss.phase >= 3 ? 10 : boss.phase >= 2 ? 9 : 7) :
-        boss.id === 2 ? 6 : 3;
+        boss.id === 2 ? 7 : 4;
       boss.attackMode = (boss.attackMode + 1) % maxMode;
     }
 
@@ -3025,6 +3314,7 @@ Boss erscheint.`,
       const dist = Math.sqrt(dx * dx + dy * dy);
       if (!l.collected && dist < player.radius + l.size * 0.6) {
         l.collected = true;
+        sfxPickup();
         applyPowerup(l.type);
         spawnExplosion(l.x, l.y, "rgba(140,255,220,1)", 1.2);
         bossLoot.splice(i, 1);
@@ -3092,6 +3382,26 @@ Boss erscheint.`,
         bossShots.splice(i, 1);
         continue;
       }
+      if (b.type === "cluster" && b.age >= b.splitDelay) {
+        for (let k = 0; k < 6; k++) {
+          const a = (Math.PI * 2 * k) / 6;
+          const speed = 360 * PROJECTILE_SPEED_SCALE;
+          bossShots.push({
+            x: b.x,
+            y: b.y,
+            vx: Math.cos(a) * speed,
+            vy: Math.sin(a) * speed,
+            life: 3.5,
+            age: 0,
+            size: 10,
+            type: "shard",
+          });
+        }
+        spawnExplosion(b.x, b.y, "rgba(255,200,80,1)", 1.2);
+        addShake(3, 8);
+        bossShots.splice(i, 1);
+        continue;
+      }
 
       // Maschinengewehr-Burst (Boss2/3)
       if (currentBoss && currentBoss.machineGun) {
@@ -3129,7 +3439,7 @@ Boss erscheint.`,
       }
 
       // seeker adjust
-      if (b.type === "seeker") {
+      if (b.type === "seeker" && (!b.homingDuration || b.age < b.homingDuration)) {
         const ang = Math.atan2(player.y - b.y, player.x - b.x);
         b.vx += Math.cos(ang) * 40 * dt;
         b.vy += Math.sin(ang) * 40 * dt;
@@ -3256,9 +3566,12 @@ Boss erscheint.`,
           beamY + beamH > boss.y - boss.height / 2
         ) {
           boss.hp -= 2;
+          boss.hitFlash = 3;
           s.hitTimer = 0.12;
+          addShake(2, 7);
           spawnExplosion(boss.x - boss.width / 2, s.y, "rgba(180,255,220,1)", 0.6);
           if (boss.hp <= 0) {
+            addShake(14, 5);
             defeatBoss(boss.id);
             return;
           }
@@ -3275,9 +3588,12 @@ Boss erscheint.`,
         s.y < boss.y + boss.height / 2
       ) {
         boss.hp -= 3;
+        boss.hitFlash = 3;
+        addShake(2, 7);
         spawnExplosion(s.x, s.y, "rgba(255, 210, 120,1)", 0.8);
         playerShots.splice(i, 1);
         if (boss.hp <= 0) {
+          addShake(14, 5);
           defeatBoss(boss.id);
           return;
         }
@@ -3290,6 +3606,20 @@ Boss erscheint.`,
   // ======================================================
   //  Explosions
   // ======================================================
+  function spawnBossDeathExplosion(bx, by) {
+    const cols = ['rgba(255,255,255,1)', 'rgba(255,200,100,1)', 'rgba(100,200,255,1)', 'rgba(255,130,180,1)', 'rgba(160,255,120,1)'];
+    spawnExplosion(bx, by, cols[0], 4.0);
+    for (let i = 0; i < 8; i++) {
+      const a = (Math.PI * 2 * i) / 8 + Math.random() * 0.3;
+      const r = 50 + Math.random() * 60;
+      spawnExplosion(bx + Math.cos(a) * r, by + Math.sin(a) * r, cols[i % cols.length], 2.2);
+    }
+    for (let i = 0; i < 4; i++) {
+      const a = Math.random() * Math.PI * 2;
+      spawnExplosion(bx + Math.cos(a) * (120 + Math.random() * 40), by + Math.sin(a) * (80 + Math.random() * 30), cols[i % cols.length], 1.4);
+    }
+  }
+
   function spawnExplosion(x, y, color = "rgba(140,220,255,1)", power = 1) {
     const count = Math.floor(12 * power);
     for (let i = 0; i < count; i++) {
@@ -3454,69 +3784,72 @@ Boss erscheint.`,
     ctx.drawImage(img, bgOffset + w, 0, w, h);
   }
 
+  function _drawToastBadge(text, bx, by) {
+    ctx.save();
+    ctx.font = `600 13px ${SECONDARY_FONT}`;
+    ctx.textBaseline = "middle";
+    const metrics = ctx.measureText(text);
+    const textW = metrics.width;
+    const padX = 14;
+    const padY = 0;
+    const boxH = 30;
+    const accentW = 4;
+    const boxW = accentW + padX + textW + padX;
+    const boxX = bx;
+    const boxY = by - boxH / 2;
+
+    ctx.fillStyle = "rgba(4,10,26,0.88)";
+    ctx.strokeStyle = "rgba(60,140,220,0.35)";
+    ctx.lineWidth = 1;
+    ctx.fillRect(boxX, boxY, boxW, boxH);
+    ctx.strokeRect(boxX + 0.5, boxY + 0.5, boxW - 1, boxH - 1);
+
+    ctx.fillStyle = "#3ab8ff";
+    ctx.fillRect(boxX, boxY, accentW, boxH);
+
+    ctx.fillStyle = "#cdeeff";
+    ctx.fillText(text, boxX + accentW + padX, by);
+    ctx.restore();
+  }
+
   function drawPhaseText() {
     if (!phaseTextActive || !phaseTextLine) return;
     if (inBossFight || bossTransitionActive || pendingBossId) return;
-
-    ctx.save();
-    ctx.font = PHASE_TEXT_FONT;
-    ctx.textBaseline = "middle";
-    const metrics = ctx.measureText(phaseTextLine);
-    const textW = metrics.width;
-    const boxPadX = 12;
-    const boxPadY = 8;
-    const boxH = 28;
-    const boxW = textW + boxPadX * 2;
-    const boxX = phaseTextX - boxPadX;
-    const boxY = phaseTextY - boxH / 2;
-    ctx.fillStyle = "rgba(0,0,0,0.78)";
-    ctx.fillRect(boxX, boxY, boxW, boxH);
-    ctx.fillStyle = "#ffffff";
-    ctx.fillText(phaseTextLine, phaseTextX, phaseTextY);
-    ctx.restore();
+    _drawToastBadge(phaseTextLine, phaseTextX, phaseTextY);
   }
 
   function drawNnTaunt() {
     if (!nnTauntActive || !nnTauntText) return;
     if (inBossFight || bossTransitionActive || pendingBossId) return;
-
-    ctx.save();
-    ctx.font = PHASE_TEXT_FONT;
-    ctx.textBaseline = "middle";
-    const metrics = ctx.measureText(nnTauntText);
-    const textW = metrics.width;
-    const boxPadX = 12;
-    const boxPadY = 8;
-    const boxH = 28;
-    const boxW = textW + boxPadX * 2;
-    const boxX = nnTauntX - boxPadX;
-    const boxY = nnTauntY - boxH / 2;
-    ctx.fillStyle = "rgba(0,0,0,0.78)";
-    ctx.fillRect(boxX, boxY, boxW, boxH);
-    ctx.fillStyle = "#ffffff";
-    ctx.fillText(nnTauntText, nnTauntX, nnTauntY);
-    ctx.restore();
+    _drawToastBadge(nnTauntText, nnTauntX, nnTauntY);
   }
 
   function drawBossStoryOverlay() {
     if (!pendingBossId || bossTransitionActive || inBossFight) return;
     if (!pendingBossStoryLines.length) return;
 
-    const lineHeight = 26;
-    const maxVisible = Math.max(1, Math.floor((WORLD_H * 0.62) / lineHeight));
+    const lineHeight = 32;
+    const maxVisible = Math.max(1, Math.floor((WORLD_H * 0.66) / lineHeight));
     const revealedChars = Math.min(pendingBossStoryRevealChars, pendingBossStoryTotalChars);
     let charBudget = revealedChars;
     let lastLineWithChars = -1;
 
     ctx.save();
-    ctx.fillStyle = "rgba(0,0,0,0.65)";
+    // Dark overlay with subtle vignette
+    ctx.fillStyle = "rgba(0,0,0,0.72)";
+    ctx.fillRect(0, 0, WORLD_W, WORLD_H);
+    // Subtle blue glow center
+    const vigGrad = ctx.createRadialGradient(WORLD_W / 2, WORLD_H / 2, 100, WORLD_W / 2, WORLD_H / 2, 550);
+    vigGrad.addColorStop(0, "rgba(30,60,120,0.18)");
+    vigGrad.addColorStop(1, "rgba(0,0,0,0)");
+    ctx.fillStyle = vigGrad;
     ctx.fillRect(0, 0, WORLD_W, WORLD_H);
 
-    const x = WORLD_W * 0.12;
-    const yStart = WORLD_H * 0.16;
-    ctx.font = `600 18px ${SECONDARY_FONT}`;
+    const cx = WORLD_W / 2;
+    const yStart = WORLD_H * 0.14;
+    ctx.font = `600 ${BOSS_STORY_FONT_SIZE}px ${SECONDARY_FONT}`;
     ctx.fillStyle = "#e9f2ff";
-    ctx.textAlign = "left";
+    ctx.textAlign = "center";
     ctx.textBaseline = "top";
 
     for (let i = 0; i < pendingBossStoryLines.length; i++) {
@@ -3545,9 +3878,21 @@ Boss erscheint.`,
       } else if (remaining > 0) {
         drawLine = line.slice(0, Math.floor(remaining));
       }
-      if (drawLine) ctx.fillText(drawLine, x, y);
+      // First line (boss name) gets accent styling
+      if (i === 0 && drawLine) {
+        ctx.save();
+        ctx.font = `600 ${BOSS_STORY_FONT_SIZE + 2}px ${SECONDARY_FONT}`;
+        ctx.fillStyle = "#9ef";
+        ctx.shadowColor = "rgba(100,230,255,0.6)";
+        ctx.shadowBlur = 10;
+        ctx.fillText(drawLine, cx, y);
+        ctx.restore();
+      } else if (drawLine) {
+        ctx.fillText(drawLine, cx, y);
+      }
     }
 
+    // Blinking cursor (after last revealed char on current line)
     if (pendingBossStoryCursorOn) {
       let cursorLine = Math.min(Math.max(lastLineWithChars, 0), pendingBossStoryLines.length - 1);
       if (cursorLine < start) cursorLine = start;
@@ -3556,17 +3901,30 @@ Boss erscheint.`,
       for (let i = 0; i < cursorLine; i++) charsBefore += pendingBossStoryLines[i].length;
       const cursorLineText = pendingBossStoryLines[cursorLine] || "";
       const charsInLine = Math.max(0, Math.min(cursorLineText.length, Math.floor(revealedChars - charsBefore)));
-      const cursorX = x + ctx.measureText(cursorLineText.slice(0, charsInLine)).width + 4;
+      const partialText = cursorLineText.slice(0, charsInLine);
+      const lineW = ctx.measureText(partialText).width;
+      const cursorX = cx + lineW / 2 + 4;
       const cursorY = yStart + (cursorLine - start) * lineHeight;
-      ctx.fillRect(cursorX, cursorY + 4, 6, lineHeight - 8);
+      ctx.fillRect(cursorX, cursorY + 4, 5, lineHeight - 10);
     }
 
-    ctx.font = `600 14px ${SECONDARY_FONT}`;
-    ctx.fillStyle = "rgba(220,240,255,0.7)";
+    // Hint bar at bottom
+    ctx.save();
+    const hintY = WORLD_H - 52;
+    ctx.fillStyle = "rgba(8,16,36,0.8)";
+    ctx.fillRect(0, hintY - 8, WORLD_W, 44);
+    ctx.strokeStyle = "rgba(79,150,220,0.25)";
+    ctx.lineWidth = 1;
+    ctx.beginPath(); ctx.moveTo(0, hintY - 8); ctx.lineTo(WORLD_W, hintY - 8); ctx.stroke();
+    ctx.font = `600 15px ${SECONDARY_FONT}`;
+    ctx.fillStyle = "rgba(200,230,255,0.75)";
+    ctx.textAlign = "center";
+    ctx.textBaseline = "middle";
     const hint = bossAwaitingConfirm
       ? "Leertaste / Tap: Boss starten"
       : "Leertaste / Tap: überspringen";
-    ctx.fillText(hint, x, WORLD_H - 38);
+    ctx.fillText(hint, WORLD_W / 2, hintY + 14);
+    ctx.restore();
 
     ctx.restore();
   }
@@ -3712,19 +4070,44 @@ Boss erscheint.`,
         continue;
       }
       const size = s.size || 6;
-      const grad = ctx.createRadialGradient(s.x, s.y, 0, s.x, s.y, size * 1.8);
-      grad.addColorStop(0, "rgba(120,255,180,0.9)");
-      grad.addColorStop(1, "rgba(60,200,120,0)");
-      ctx.fillStyle = grad;
+      const shotAngle = Math.atan2(s.vy || 0, s.vx || 1);
+      const stretch = 2.8;
+
+      ctx.save();
+      ctx.translate(s.x, s.y);
+      ctx.rotate(shotAngle);
+
+      // Trailing streak
+      ctx.globalCompositeOperation = 'lighter';
+      const trailGrad = ctx.createLinearGradient(-size * stretch, 0, size * 0.4, 0);
+      trailGrad.addColorStop(0, 'rgba(60,200,120,0)');
+      trailGrad.addColorStop(1, 'rgba(160,255,180,0.45)');
+      ctx.fillStyle = trailGrad;
       ctx.beginPath();
-      ctx.arc(s.x, s.y, size, 0, Math.PI * 2);
+      ctx.ellipse(-size * stretch * 0.5, 0, size * stretch, size * 0.55, 0, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.globalCompositeOperation = 'source-over';
+
+      // Core dot
+      const coreGrad = ctx.createRadialGradient(0, 0, 0, 0, 0, size);
+      coreGrad.addColorStop(0, 'rgba(220,255,210,1)');
+      coreGrad.addColorStop(0.5, 'rgba(120,255,160,0.9)');
+      coreGrad.addColorStop(1, 'rgba(60,200,100,0)');
+      ctx.fillStyle = coreGrad;
+      ctx.beginPath();
+      ctx.arc(0, 0, size, 0, Math.PI * 2);
       ctx.fill();
 
-      ctx.strokeStyle = "rgba(120,255,180,0.7)";
+      // Outer glow ring
+      ctx.globalCompositeOperation = 'lighter';
+      ctx.strokeStyle = 'rgba(100,255,150,0.38)';
       ctx.lineWidth = 2;
       ctx.beginPath();
-      ctx.arc(s.x, s.y, size * 1.2, 0, Math.PI * 2);
+      ctx.arc(0, 0, size * 1.7, 0, Math.PI * 2);
       ctx.stroke();
+      ctx.globalCompositeOperation = 'source-over';
+
+      ctx.restore();
     }
     ctx.restore();
   }
@@ -3747,6 +4130,15 @@ Boss erscheint.`,
     } else {
       ctx.fillStyle = "#ff0000";
       ctx.fillRect(b.x - 80, b.y - 80, 160, 160);
+    }
+
+    if (b.hitFlash > 0) {
+      ctx.save();
+      ctx.globalAlpha = (b.hitFlash / 3) * 0.6;
+      ctx.globalCompositeOperation = 'lighter';
+      ctx.fillStyle = '#88ccff';
+      ctx.fillRect(b.x - b.width / 2, b.y - b.height / 2, b.width, b.height);
+      ctx.restore();
     }
 
     ctx.restore();
@@ -3828,7 +4220,6 @@ Boss erscheint.`,
         continue;
       }
       const size = Number.isFinite(s.size) ? s.size : 6;
-      const grad = ctx.createRadialGradient(s.x, s.y, 0, s.x, s.y, size * 1.8);
       const color =
         s.type === "shard" ? "#ff99cc" :
         s.type === "seeker" ? "#88ffda" :
@@ -3839,19 +4230,47 @@ Boss erscheint.`,
         s.type === "add" ? "#a0ffb0" :
         s.type === "slicer" ? "#b4ff7a" :
         s.type === "mine" ? "#ff9b7a" :
+        s.type === "cluster" ? "#ffcc44" :
         "#ffcc66";
+
+      ctx.save();
+      ctx.translate(s.x, s.y);
+
+      // Comet tail aligned with velocity
+      const shotAngle = Math.atan2(s.vy || 0, s.vx || -1);
+      ctx.save();
+      ctx.rotate(shotAngle);
+      ctx.globalCompositeOperation = 'lighter';
+      ctx.globalAlpha = alpha * 0.38;
+      const tailLen = size * 4;
+      const tailGrad = ctx.createLinearGradient(-tailLen, 0, 0, 0);
+      tailGrad.addColorStop(0, `${color}00`);
+      tailGrad.addColorStop(1, `${color}88`);
+      ctx.fillStyle = tailGrad;
+      ctx.beginPath();
+      ctx.ellipse(-tailLen / 2, 0, tailLen / 2, size * 0.48, 0, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.globalCompositeOperation = 'source-over';
+      ctx.globalAlpha = 1;
+      ctx.restore();
+
+      // Spinning orb
+      ctx.rotate(age * 2.6);
+      const grad = ctx.createRadialGradient(0, 0, 0, 0, 0, size * 1.8);
       grad.addColorStop(0, `${color}aa`);
       grad.addColorStop(1, `${color}00`);
       ctx.fillStyle = grad;
       ctx.beginPath();
-      ctx.arc(s.x, s.y, size, 0, Math.PI * 2);
+      ctx.arc(0, 0, size, 0, Math.PI * 2);
       ctx.fill();
-
+      ctx.globalAlpha = alpha;
       ctx.strokeStyle = `${color}${Math.floor(alpha * 255).toString(16).padStart(2, "0")}`;
       ctx.lineWidth = 2;
       ctx.beginPath();
-      ctx.arc(s.x, s.y, size * 1.2, 0, Math.PI * 2);
+      ctx.arc(0, 0, size * 1.2, 0, Math.PI * 2);
       ctx.stroke();
+      ctx.globalAlpha = 1;
+      ctx.restore();
     }
     ctx.restore();
   }
@@ -3897,7 +4316,7 @@ Boss erscheint.`,
 
     if (img.complete && img.naturalWidth) {
       const aspect = img.width / img.height;
-      const scale = 1.99;
+      const scale = 1.62;
       let drawW = r * 2 * scale;
       let drawH = r * 2 * scale;
       if (aspect > 1) {
@@ -3914,23 +4333,51 @@ Boss erscheint.`,
       ctx.fill();
     }
 
-    if (player.shieldTimer > 0 || player.shieldHits > 0) {
-      ctx.strokeStyle = `rgba(120,200,255,0.8)`;
-      ctx.lineWidth = 5;
+    if (playerHitFlash > 0) {
+      ctx.save();
+      ctx.globalAlpha = (playerHitFlash / 5) * 0.65;
+      ctx.globalCompositeOperation = 'lighter';
+      ctx.fillStyle = '#ff5555';
       ctx.beginPath();
-      ctx.arc(0, 0, r + 10, 0, Math.PI * 2);
+      ctx.arc(0, 0, r * 2.2, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.restore();
+    }
+
+    if (player.shieldTimer > 0 || player.shieldHits > 0) {
+      const shieldAngle = globalTime * 1.8;
+      const shieldPulse = 0.65 + 0.2 * Math.sin(globalTime * 4);
+      ctx.save();
+      ctx.strokeStyle = `rgba(120,200,255,${shieldPulse})`;
+      ctx.lineWidth = 3;
+      ctx.shadowColor = 'rgba(80,180,255,0.8)';
+      ctx.shadowBlur = 8;
+      ctx.beginPath();
+      ctx.arc(0, 0, r + 10, shieldAngle, shieldAngle + Math.PI * 1.6);
       ctx.stroke();
-      // kleiner Schild-Indikator oben rechts
-      ctx.fillStyle = "rgba(120,200,255,0.9)";
-      ctx.fillRect(r + 10, -r - 16, 20, 12);
+      ctx.strokeStyle = `rgba(180,230,255,${shieldPulse * 0.5})`;
+      ctx.lineWidth = 1.5;
+      ctx.shadowBlur = 0;
+      ctx.beginPath();
+      ctx.arc(0, 0, r + 10, shieldAngle + Math.PI, shieldAngle + Math.PI + Math.PI * 0.5);
+      ctx.stroke();
+      ctx.restore();
     }
 
     if (player.turboTimer > 0) {
-      ctx.strokeStyle = "rgba(255,170,80,0.7)";
-      ctx.lineWidth = 4;
-      ctx.beginPath();
-      ctx.arc(0, 0, r + 16, 0, Math.PI * 2);
-      ctx.stroke();
+      ctx.save();
+      for (let k = 0; k < 3; k++) {
+        const a = globalTime * 3.2 + (k * Math.PI * 2) / 3;
+        const sparkPulse = 0.5 + 0.4 * Math.sin(globalTime * 7 + k * 2.1);
+        ctx.strokeStyle = `rgba(255,${140 + k * 30},60,${sparkPulse})`;
+        ctx.lineWidth = 2.5;
+        ctx.shadowColor = 'rgba(255,160,40,0.7)';
+        ctx.shadowBlur = 6;
+        ctx.beginPath();
+        ctx.arc(0, 0, r + 16, a, a + Math.PI * 0.55);
+        ctx.stroke();
+      }
+      ctx.restore();
     }
 
     // Waffen-Indikator
@@ -3951,22 +4398,30 @@ Boss erscheint.`,
 function drawUI() {
   ctx.save();
   const showIntro = !gameRunning && !gameOver;
-  const showLeaderboardPanel = !gameRunning;
+  const showLeaderboardPanel = gameOver && !gameRunning;
   let nameButtonCandidate = null;
 
   ctx.textAlign = "left";
   ctx.textBaseline = "top";
   ctx.fillStyle = "#8fd3ff";
-  ctx.font = `600 18px ${SECONDARY_FONT}`;
-  ctx.fillText(`Pilot: ${playerName || "---"}`, 16, 20);
+  ctx.font = `600 14px ${SECONDARY_FONT}`;
+  ctx.fillText(`Spieler: ${playerName || "---"}`, 16, 20);
 
-  ctx.font = `600 32px ${PRIMARY_FONT}`;
-  ctx.fillStyle = "#fff";
-  ctx.fillText(`Punkte: ${score}`, 16, 48);
+  // Score with flash animation
+  if (score !== lastDrawnScore) { scoreFlashTimer = 0.35; lastDrawnScore = score; }
+  const scoreScale = 1 + (scoreFlashTimer > 0 ? 0.22 * (scoreFlashTimer / 0.35) : 0);
+  ctx.save();
+  ctx.translate(16, 52);
+  ctx.scale(scoreScale, scoreScale);
+  ctx.font = `400 18px ${PRIMARY_FONT}`;
+  ctx.fillStyle = scoreFlashTimer > 0 ? "#ffe066" : "#fff";
+  if (scoreFlashTimer > 0) { ctx.shadowColor = "#ffe066"; ctx.shadowBlur = 14; }
+  ctx.fillText(`Punkte: ${score}`, 0, 0);
+  ctx.restore();
 
-  ctx.font = `600 20px ${SECONDARY_FONT}`;
+  ctx.font = `600 14px ${SECONDARY_FONT}`;
   ctx.fillStyle = "#9ec9ff";
-  ctx.fillText(`Highscore: ${highscore}`, 16, 86);
+  ctx.fillText(`Highscore: ${highscore}`, 16, 82);
 
   if (inBossFight && currentBoss && currentBoss.id === 4 && currentBoss.phase === 2) {
     const secs = Math.max(0, Math.ceil(currentBoss.cutoverTimer));
@@ -4020,12 +4475,12 @@ function drawUI() {
 
     ctx.textAlign = "center";
     ctx.textBaseline = "top";
-    ctx.font = `600 18px ${PRIMARY_FONT}`;
+    ctx.font = `400 11px ${PRIMARY_FONT}`;
     ctx.fillStyle = "#dff6ff";
     ctx.fillText("Leaderboard", boardW / 2, 10);
-    ctx.font = `600 13px ${SECONDARY_FONT}`;
+    ctx.font = `400 8px ${PRIMARY_FONT}`;
     ctx.fillStyle = "#7fb2d7";
-    ctx.fillText("Top 50 Piloten", boardW / 2, 32);
+    ctx.fillText("TOP 50", boardW / 2, 32);
 
     const listY = 56;
     const listHeight = boardH - 120;
@@ -4039,9 +4494,9 @@ function drawUI() {
     const entries = leaderboard.slice(0, 50);
     if (!entries.length) {
       ctx.textAlign = "center";
-      ctx.font = `600 14px ${SECONDARY_FONT}`;
+      ctx.font = `400 8px ${PRIMARY_FONT}`;
       ctx.fillStyle = "#7f9dbb";
-      ctx.fillText("Noch keine Scores", boardW / 2, listY + listHeight / 2 - 8);
+      ctx.fillText("KEINE SCORES", boardW / 2, listY + listHeight / 2 - 8);
     } else {
       const totalHeight = entries.length * LEADERBOARD_ENTRY_HEIGHT;
       const visibleRows = Math.ceil(listHeight / LEADERBOARD_ENTRY_HEIGHT);
@@ -4058,32 +4513,29 @@ function drawUI() {
         const rowCenter =
           listY + i * LEADERBOARD_ENTRY_HEIGHT - offsetY + LEADERBOARD_ENTRY_HEIGHT / 2;
 
-        ctx.fillStyle = rank <= 3 ? "rgba(255,211,107,0.12)" : "rgba(255,255,255,0.025)";
-        ctx.fillRect(12, rowCenter - 14, listWidth - 4, LEADERBOARD_ENTRY_HEIGHT - 2);
+        ctx.fillStyle = rank <= 3 ? "rgba(255,211,107,0.10)" : "rgba(255,255,255,0.02)";
+        ctx.fillRect(12, rowCenter - 12, listWidth - 4, LEADERBOARD_ENTRY_HEIGHT - 2);
 
         const style = getLeaderboardEntryStyle(entry);
-        const baseColor = style.color || (rank <= 3 ? "#ffd36b" : "#e8f6ff");
+        const baseColor = style.color || (rank <= 3 ? "#ffd36b" : "#b8d8f0");
+        const rankStr = String(rank).padStart(2, "0");
+        let displayName = style.displayName || "";
+        if (displayName.length > 10) displayName = displayName.slice(0, 9) + "…";
+
         ctx.save();
-        if (rank <= 3) {
-          ctx.shadowColor = baseColor;
-          ctx.shadowBlur = 12;
-        }
+        if (rank <= 3) { ctx.shadowColor = baseColor; ctx.shadowBlur = 10; }
         ctx.textAlign = "left";
-        ctx.font = `600 15px ${SECONDARY_FONT}`;
+        ctx.font = `400 8px ${PRIMARY_FONT}`;
+        ctx.fillStyle = rank <= 3 ? baseColor : "rgba(180,210,240,0.7)";
+        ctx.fillText(rankStr, 18, rowCenter);
         ctx.fillStyle = baseColor;
-        ctx.fillText(`${String(rank).padStart(2, "0")}. ${style.displayName}`, 18, rowCenter - 8);
-        if (rank <= 3) {
-          ctx.shadowBlur = 0;
-          ctx.strokeStyle = "rgba(255,255,255,0.25)";
-          ctx.lineWidth = 2;
-          ctx.strokeText(`${String(rank).padStart(2, "0")}. ${style.displayName}`, 18, rowCenter - 8);
-        }
+        ctx.fillText(displayName, 42, rowCenter);
         ctx.restore();
 
         ctx.textAlign = "right";
-        ctx.font = `600 14px ${SECONDARY_FONT}`;
-        ctx.fillStyle = "#8fd3ff";
-        ctx.fillText(`${entry.score}`, boardW - 18, rowCenter - 8);
+        ctx.font = `400 8px ${PRIMARY_FONT}`;
+        ctx.fillStyle = "#6bc4f0";
+        ctx.fillText(`${entry.score}`, boardW - 14, rowCenter);
       }
     }
     ctx.restore();
@@ -4096,122 +4548,284 @@ function drawUI() {
     ctx.strokeRect(panelBtn.x, panelBtn.y, panelBtn.w, panelBtn.h);
     ctx.textAlign = "center";
     ctx.textBaseline = "middle";
-    ctx.font = `600 15px ${SECONDARY_FONT}`;
+    ctx.font = `400 8px ${PRIMARY_FONT}`;
     ctx.fillStyle = "#e3f6ff";
-    ctx.fillText("Name anpassen", panelBtn.x + panelBtn.w / 2, panelBtn.y + panelBtn.h / 2);
+    ctx.fillText("NAME ANPASSEN", panelBtn.x + panelBtn.w / 2, panelBtn.y + panelBtn.h / 2);
     ctx.restore();
     nameButtonCandidate = { x: boardX + panelBtn.x, y: boardY + panelBtn.y, w: panelBtn.w, h: panelBtn.h };
   }
 
   const hudLeft = 16;
-  const hpBarW = 180;
-  const hpBarH = 14;
-  const hpBarY = WORLD_H - 100;
+  const TOTAL_HEARTS = 5;
+  const heartSize = 20;
+  const heartGap = 6;
+  const heartsTopY = WORLD_H - 118;
 
   ctx.textAlign = "left";
   ctx.textBaseline = "middle";
-  ctx.font = `600 16px ${SECONDARY_FONT}`;
-  ctx.fillStyle = "#fff";
-  ctx.fillText("HP", hudLeft, hpBarY - 14);
-  ctx.fillStyle = "rgba(255,255,255,0.2)";
-  ctx.fillRect(hudLeft, hpBarY, hpBarW, hpBarH);
   const hpRatio = player.hp / player.maxHp;
-  ctx.fillStyle = hpRatio > 0.5 ? "#8bff9c" : hpRatio > 0.25 ? "#ffd966" : "#ff8888";
-  ctx.fillRect(hudLeft, hpBarY, hpBarW * Math.max(0, Math.min(1, hpRatio)), hpBarH);
-  ctx.strokeStyle = "#fff";
-  ctx.strokeRect(hudLeft, hpBarY, hpBarW, hpBarH);
+  const hpLowPulse = hpRatio < 0.25 ? 0.6 + 0.4 * Math.abs(Math.sin(globalTime * 6)) : 1;
+  const heartColor = hpRatio > 0.5 ? "#8bff9c" : hpRatio > 0.25 ? "#ffd966" : "#ff5555";
 
-  const armorY = hpBarY + hpBarH + 24;
+  // HP label
+  ctx.font = `400 8px ${PRIMARY_FONT}`;
+  ctx.fillStyle = hpRatio < 0.25 ? `rgba(255,85,85,${hpLowPulse})` : "rgba(255,255,255,0.55)";
+  ctx.fillText("HP", hudLeft, heartsTopY - 12);
+
+  // Hearts
+  const fullHearts = Math.floor(hpRatio * TOTAL_HEARTS);
+  const halfHeart = ((hpRatio * TOTAL_HEARTS) - fullHearts) >= 0.45 ? 1 : 0;
+  ctx.save();
+  ctx.font = `${heartSize}px sans-serif`;
+  ctx.textBaseline = "top";
+  for (let i = 0; i < TOTAL_HEARTS; i++) {
+    const hx = hudLeft + i * (heartSize + heartGap);
+    const isFull = i < fullHearts;
+    const isHalf = !isFull && (i === fullHearts) && halfHeart;
+    if (isFull) {
+      if (hpRatio < 0.25) { ctx.shadowColor = "#ff5555"; ctx.shadowBlur = 8 * hpLowPulse; }
+      ctx.fillStyle = heartColor;
+    } else if (isHalf) {
+      ctx.shadowBlur = 0;
+      ctx.fillStyle = `rgba(${hpRatio < 0.25 ? "255,85,85" : hpRatio < 0.5 ? "255,217,102" : "139,255,156"},0.45)`;
+    } else {
+      ctx.shadowBlur = 0;
+      ctx.fillStyle = "rgba(255,255,255,0.1)";
+    }
+    ctx.fillText("♥", hx, heartsTopY);
+  }
+  ctx.shadowBlur = 0;
+  ctx.restore();
+
+  // Armor segments
+  const armorTopY = heartsTopY + heartSize + 16;
   const maxShield = player.maxHp * SHIELD_MAX_RATIO;
   const armorRatio = maxShield > 0 ? Math.min(1, player.shieldCharge / maxShield) : 0;
-  ctx.fillStyle = "#bfeaff";
-  ctx.fillText("Rüstung", hudLeft, armorY - 14);
-  ctx.fillStyle = "rgba(191,234,255,0.2)";
-  ctx.fillRect(hudLeft, armorY, hpBarW, hpBarH);
-  ctx.fillStyle = "#8ad8ff";
-  ctx.fillRect(hudLeft, armorY, hpBarW * armorRatio, hpBarH);
-  ctx.strokeStyle = "#cfefff";
-  ctx.strokeRect(hudLeft, armorY, hpBarW, hpBarH);
+  const TOTAL_SEGS = 5;
+  const segW = 30;
+  const segH = 7;
+  const segGap = 3;
 
+  ctx.font = `400 8px ${PRIMARY_FONT}`;
+  ctx.textBaseline = "middle";
+  ctx.fillStyle = "rgba(140,210,255,0.50)";
+  ctx.fillText("RST", hudLeft, armorTopY - 10);
+
+  const fullSegs = Math.round(armorRatio * TOTAL_SEGS);
+  ctx.save();
+  for (let i = 0; i < TOTAL_SEGS; i++) {
+    const sx = hudLeft + i * (segW + segGap);
+    const filled = i < fullSegs;
+    if (filled) { ctx.shadowColor = "rgba(138,216,255,0.5)"; ctx.shadowBlur = 4; }
+    ctx.fillStyle = filled ? "#8ad8ff" : "rgba(140,200,255,0.1)";
+    ctx.strokeStyle = filled ? "rgba(140,200,255,0.5)" : "rgba(140,200,255,0.2)";
+    ctx.lineWidth = 1;
+    ctx.fillRect(sx, armorTopY, segW, segH);
+    ctx.strokeRect(sx, armorTopY, segW, segH);
+    ctx.shadowBlur = 0;
+  }
+  ctx.restore();
+
+  const statusY = armorTopY + segH + 10;
   if (player.shieldHits > 0) {
     ctx.fillStyle = "#9ed8ff";
     ctx.textBaseline = "top";
-    ctx.font = `600 14px ${SECONDARY_FONT}`;
-    ctx.fillText("Schild aktiv: 1 Treffer", hudLeft, armorY + hpBarH + 8);
+    ctx.font = `400 8px ${PRIMARY_FONT}`;
+    ctx.fillText("SCHILD AKTIV", hudLeft, statusY);
   }
 
   if (player.lockTimer > 0) {
     ctx.fillStyle = "#ff5ad9";
     ctx.textBaseline = "top";
-    ctx.font = `600 14px ${SECONDARY_FONT}`;
-    ctx.fillText("LOCKING", hudLeft, armorY + hpBarH + 28);
+    ctx.font = `400 8px ${PRIMARY_FONT}`;
+    ctx.fillText("LOCKING", hudLeft, statusY + (player.shieldHits > 0 ? 16 : 0));
   }
 
   if (showIntro) {
     ctx.save();
+    const bgFadeIn = Math.min(1, introAnimTimer / 0.55);
 
-    // Startscreen background image (with dark fallback)
-    const bgFadeIn = Math.min(1, introAnimTimer / 0.6);
-    ctx.globalAlpha = bgFadeIn;
-    if (assets.startscreen && assets.startscreen.complete && assets.startscreen.naturalWidth > 0) {
-      ctx.drawImage(assets.startscreen, 0, 0, WORLD_W, WORLD_H);
-    } else {
-      ctx.fillStyle = "#020712";
-      ctx.fillRect(0, 0, WORLD_W, WORLD_H);
+    // ── 1. Background: dark + grid + stars + vignette ────────────────────
+    ctx.fillStyle = "#020912";
+    ctx.fillRect(0, 0, WORLD_W, WORLD_H);
+
+    // Grid
+    ctx.save();
+    ctx.globalAlpha = bgFadeIn * 0.55;
+    ctx.strokeStyle = "rgba(79,180,255,0.045)";
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    for (let gx = 0; gx <= WORLD_W; gx += 40) { ctx.moveTo(gx, 0); ctx.lineTo(gx, WORLD_H); }
+    for (let gy = 0; gy <= WORLD_H; gy += 40) { ctx.moveTo(0, gy); ctx.lineTo(WORLD_W, gy); }
+    ctx.stroke();
+    ctx.restore();
+
+    // Drifting pixel stars
+    if (!_introStars) {
+      _introStars = Array.from({ length: 28 }, () => ({
+        x: Math.random() * WORLD_W, y: Math.random() * WORLD_H,
+        vx: -(6 + Math.random() * 10), vy: -0.5 + Math.random(),
+        b: 0.2 + Math.random() * 0.7, s: Math.random() < 0.4 ? 2 : 1,
+      }));
     }
-    ctx.globalAlpha = 1;
+    ctx.save();
+    ctx.globalAlpha = bgFadeIn * 0.85;
+    for (const s of _introStars) {
+      s.x += s.vx * rawDt; s.y += s.vy * rawDt;
+      if (s.x < -2) { s.x = WORLD_W + 2; s.y = Math.random() * WORLD_H; }
+      if (s.y < -2) s.y = WORLD_H + 2;
+      if (s.y > WORLD_H + 2) s.y = -2;
+      ctx.globalAlpha = bgFadeIn * s.b;
+      ctx.fillStyle = "#aad8ff";
+      ctx.fillRect(Math.round(s.x), Math.round(s.y), s.s, s.s);
+    }
+    ctx.restore();
 
-    // Title area: slide in from above
-    const titleEase = Math.min(1, introAnimTimer / 0.7);
-    const titleSlide = 1 - Math.pow(1 - titleEase, 3);
-    const titleAlpha = Math.min(1, introAnimTimer / 0.5);
-    const introTitleY = WORLD_H / 2 - 230 - (1 - titleSlide) * 28;
+    // Vignette
+    const vig = ctx.createRadialGradient(WORLD_W / 2, WORLD_H / 2, 180, WORLD_W / 2, WORLD_H / 2, 720);
+    vig.addColorStop(0, "rgba(0,0,0,0)");
+    vig.addColorStop(1, "rgba(0,0,0,0.7)");
+    ctx.save();
+    ctx.globalAlpha = bgFadeIn;
+    ctx.fillStyle = vig;
+    ctx.fillRect(0, 0, WORLD_W, WORLD_H);
+    ctx.restore();
 
-    ctx.globalAlpha = titleAlpha;
-    ctx.textAlign = "center";
-    ctx.textBaseline = "middle";
+    // ── 2. Left column ──────────────────────────────────────────────────
+    const leftCX = 380;
+    const fadeIn = bgFadeIn;
 
-    // Logo N.png with pulse glow
+    // Logo — with float
+    const logoFloat = Math.sin(globalTime * 1.2) * 3;
     if (assets.logo && assets.logo.complete && assets.logo.naturalWidth > 0) {
-      const logoSize = 52;
-      const glowPulse = 0.65 + 0.35 * Math.sin(globalTime * 2.4);
+      const logoSize = 60;
+      const glow = 0.6 + 0.4 * Math.sin(globalTime * 2.4);
       ctx.save();
+      ctx.globalAlpha = fadeIn;
       ctx.shadowColor = "rgba(79,180,255,0.85)";
-      ctx.shadowBlur = 22 * glowPulse;
-      ctx.drawImage(assets.logo, WORLD_W / 2 - logoSize / 2, introTitleY - 56, logoSize, logoSize);
+      ctx.shadowBlur = 22 * glow;
+      ctx.drawImage(assets.logo, leftCX - logoSize / 2, 60 + logoFloat, logoSize, logoSize);
       ctx.restore();
     }
 
-    // Title with glow
+    // Title — with float + glitch
+    const titleFloat = Math.sin(globalTime * 1.8) * 2;
+    const titleY = 170 + titleFloat;
+    const titleText = "JUMPING NEXUS";
     ctx.save();
-    const titleGlow = 12 + 7 * Math.sin(globalTime * 1.8);
-    ctx.shadowColor = "rgba(100,200,255,0.8)";
-    ctx.shadowBlur = titleGlow;
-    ctx.fillStyle = "#e2f1ff";
-    ctx.font = `600 40px ${PRIMARY_FONT}`;
-    ctx.fillText("Flappy Nexus", WORLD_W / 2, introTitleY + 16);
-    ctx.shadowBlur = 0;
-    ctx.font = `600 17px ${SECONDARY_FONT}`;
-    ctx.fillStyle = "#8fd3ff";
-    ctx.fillText("Starte deinen Flug · sammle Lootboxen · knacke den Highscore!", WORLD_W / 2, introTitleY + 60);
+    ctx.globalAlpha = fadeIn;
+    ctx.textAlign = "center";
+    ctx.textBaseline = "middle";
+    ctx.font = `400 28px ${PRIMARY_FONT}`;
+
+    // Chromatic aberration glitch every ~8s for 0.12s
+    if (_introGlitchTimer >= 8) _introGlitchTimer = -(0.12);
+    const glitching = _introGlitchTimer < 0 && _introGlitchTimer > -0.12;
+    if (glitching) {
+      ctx.globalAlpha = fadeIn * 0.6;
+      ctx.fillStyle = "#ff4444";
+      ctx.fillText(titleText, leftCX - 3, titleY);
+      ctx.fillStyle = "#4444ff";
+      ctx.fillText(titleText, leftCX + 3, titleY);
+      ctx.globalAlpha = fadeIn;
+    }
+    ctx.shadowColor = "rgba(100,200,255,0.9)";
+    ctx.shadowBlur = 12 + 6 * Math.sin(globalTime * 1.8);
+    ctx.fillStyle = glitching ? "#ffffff" : "#e2f1ff";
+    ctx.fillText(titleText, leftCX, titleY);
     ctx.restore();
-    ctx.globalAlpha = 1;
 
-    // Start button (pulsing rounded)
-    const btnFade = Math.max(0, Math.min(1, (introAnimTimer - 0.35) / 0.45));
-    const btnW = 280;
-    const btnH = 60;
-    const startButtonY = WORLD_H / 2 - 95;
-    startButtonRect = { x: WORLD_W / 2 - btnW / 2, y: startButtonY, w: btnW, h: btnH };
-
-    ctx.globalAlpha = btnFade;
-    const pulse = 0.82 + 0.18 * Math.sin(globalTime * 3.2);
+    // Slogan
     ctx.save();
-    ctx.shadowColor = `rgba(79,160,255,${0.75 * pulse})`;
-    ctx.shadowBlur = 22 * pulse;
-    const btnGrad = ctx.createLinearGradient(startButtonRect.x, startButtonRect.y, startButtonRect.x + btnW, startButtonRect.y + btnH);
-    btnGrad.addColorStop(0, `rgba(52,138,210,${pulse})`);
-    btnGrad.addColorStop(1, `rgba(30,85,170,${pulse})`);
+    ctx.globalAlpha = fadeIn * Math.min(1, (introAnimTimer - 0.2) / 0.4);
+    ctx.textAlign = "center";
+    ctx.textBaseline = "middle";
+    ctx.font = `400 16px ${SECONDARY_FONT}`;
+    ctx.fillStyle = "rgba(120,175,210,0.88)";
+    ctx.fillText("Der einzige Sprint, den du gerne machst.", leftCX, 215);
+    ctx.restore();
+
+    // Divider
+    ctx.save();
+    ctx.globalAlpha = fadeIn * Math.min(1, (introAnimTimer - 0.25) / 0.4) * 0.35;
+    ctx.strokeStyle = "rgba(79,160,255,0.8)";
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.moveTo(leftCX - 140, 245);
+    ctx.lineTo(leftCX + 140, 245);
+    ctx.stroke();
+    ctx.restore();
+
+    // Name input
+    const nameFade = Math.max(0, Math.min(1, (introAnimTimer - 0.3) / 0.45));
+    const nameFieldW = 320;
+    const nameFieldH = 48;
+    const nameFieldX = Math.round(leftCX - nameFieldW / 2);
+    const nameFieldY = 265;
+    introNameRect = { x: nameFieldX, y: nameFieldY, w: nameFieldW, h: nameFieldH };
+    ctx.save();
+    ctx.globalAlpha = nameFade;
+    const fActive = introInputActive;
+    ctx.fillStyle = "rgba(4,10,22,0.92)";
+    ctx.strokeStyle = fActive ? "rgba(79,210,255,1)" : "rgba(79,160,255,0.45)";
+    ctx.lineWidth = fActive ? 2 : 1;
+    if (fActive) { ctx.shadowColor = "rgba(79,210,255,0.45)"; ctx.shadowBlur = 12; }
+    const nfr = 10;
+    ctx.beginPath();
+    ctx.moveTo(nameFieldX + nfr, nameFieldY);
+    ctx.lineTo(nameFieldX + nameFieldW - nfr, nameFieldY);
+    ctx.quadraticCurveTo(nameFieldX + nameFieldW, nameFieldY, nameFieldX + nameFieldW, nameFieldY + nfr);
+    ctx.lineTo(nameFieldX + nameFieldW, nameFieldY + nameFieldH - nfr);
+    ctx.quadraticCurveTo(nameFieldX + nameFieldW, nameFieldY + nameFieldH, nameFieldX + nameFieldW - nfr, nameFieldY + nameFieldH);
+    ctx.lineTo(nameFieldX + nfr, nameFieldY + nameFieldH);
+    ctx.quadraticCurveTo(nameFieldX, nameFieldY + nameFieldH, nameFieldX, nameFieldY + nameFieldH - nfr);
+    ctx.lineTo(nameFieldX, nameFieldY + nfr);
+    ctx.quadraticCurveTo(nameFieldX, nameFieldY, nameFieldX + nfr, nameFieldY);
+    ctx.closePath();
+    ctx.fill();
+    ctx.stroke();
+    ctx.shadowBlur = 0;
+    // "NAME" label
+    ctx.font = `400 8px ${PRIMARY_FONT}`;
+    ctx.fillStyle = fActive ? "rgba(79,210,255,0.8)" : "rgba(79,160,200,0.55)";
+    ctx.textAlign = "left";
+    ctx.textBaseline = "top";
+    ctx.fillText("NAME", nameFieldX + 14, nameFieldY + 6);
+    // Value/placeholder
+    const displayText = introInputValue || "";
+    const isPlaceholder = !displayText && !fActive;
+    ctx.font = `600 16px ${SECONDARY_FONT}`;
+    ctx.fillStyle = isPlaceholder ? "rgba(90,130,160,0.55)" : "#d8eeff";
+    ctx.textBaseline = "bottom";
+    ctx.fillText(isPlaceholder ? "Dein Name…" : displayText, nameFieldX + 14, nameFieldY + nameFieldH - 8);
+    if (fActive && Math.floor(introInputBlinkTimer * 2) % 2 === 0) {
+      ctx.font = `600 16px ${SECONDARY_FONT}`;
+      const cursorX = nameFieldX + 14 + ctx.measureText(displayText).width + 2;
+      ctx.fillStyle = "#79d4ff";
+      ctx.fillRect(Math.round(cursorX), nameFieldY + 20, 1, nameFieldH - 28);
+    }
+    ctx.restore();
+
+    // START button
+    const btnFade = Math.max(0, Math.min(1, (introAnimTimer - 0.5) / 0.4));
+    const btnW = 320;
+    const btnH = 64;
+    const startButtonY = nameFieldY + nameFieldH + 14;
+    const btnSquashX = _introButtonTap > 0 ? 1 + 0.03 * Math.sin(_introButtonTap * Math.PI) : 1;
+    const btnSquashY = _introButtonTap > 0 ? 1 - 0.05 * Math.sin(_introButtonTap * Math.PI) : 1;
+    startButtonRect = { x: leftCX - btnW / 2, y: startButtonY, w: btnW, h: btnH };
+
+    ctx.save();
+    ctx.globalAlpha = btnFade;
+    ctx.translate(leftCX, startButtonY + btnH / 2);
+    ctx.scale(btnSquashX, btnSquashY);
+    ctx.translate(-leftCX, -(startButtonY + btnH / 2));
+    const pulse = 0.82 + 0.18 * Math.sin(globalTime * 3.2);
+    ctx.shadowColor = `rgba(60,140,255,${0.85 * pulse})`;
+    ctx.shadowBlur = 28 * pulse;
+    const btnGrad = ctx.createLinearGradient(startButtonRect.x, startButtonRect.y, startButtonRect.x, startButtonRect.y + btnH);
+    btnGrad.addColorStop(0, `rgba(62,158,230,${pulse})`);
+    btnGrad.addColorStop(1, `rgba(30,88,175,${pulse})`);
     ctx.fillStyle = btnGrad;
     const br = 14;
     ctx.beginPath();
@@ -4226,91 +4840,197 @@ function drawUI() {
     ctx.quadraticCurveTo(startButtonRect.x, startButtonRect.y, startButtonRect.x + br, startButtonRect.y);
     ctx.closePath();
     ctx.fill();
-    ctx.strokeStyle = `rgba(130,210,255,${0.8 * pulse})`;
+    ctx.strokeStyle = `rgba(130,210,255,${0.65 * pulse})`;
     ctx.lineWidth = 1.5;
     ctx.stroke();
     ctx.shadowBlur = 0;
-    ctx.font = `600 24px ${SECONDARY_FONT}`;
+    ctx.textAlign = "center";
+    ctx.textBaseline = "middle";
+    ctx.font = `400 16px ${PRIMARY_FONT}`;
     ctx.fillStyle = "#eaf6ff";
-    ctx.textAlign = "center";
-    ctx.textBaseline = "middle";
-    ctx.fillText("▶  Start", WORLD_W / 2, startButtonRect.y + btnH / 2);
+    ctx.fillText("START", leftCX, startButtonRect.y + btnH / 2 - 5);
+    ctx.font = `400 12px ${SECONDARY_FONT}`;
+    ctx.fillStyle = `rgba(160,210,240,0.5)`;
+    ctx.fillText("Leertaste / Tap", leftCX, startButtonRect.y + btnH / 2 + 14);
     ctx.restore();
-    ctx.font = `600 13px ${SECONDARY_FONT}`;
-    ctx.fillStyle = "#7aadcc";
-    ctx.textAlign = "center";
-    ctx.textBaseline = "middle";
-    ctx.fillText("LEERTASTE / TAP zum Start", WORLD_W / 2, startButtonRect.y - 26);
-    ctx.globalAlpha = 1;
 
-    // Lootbox effect cards - staggered fade-in
-    const effectCards = [
-      { title: "GEIST", desc: "durch Säulen gleiten", color: "#92f4ff" },
-      { title: "SCHILD", desc: "blockt Treffer", color: "#8fb6ff" },
-      { title: "DOPPEL", desc: "+2 Punkte pro Säule", color: "#ffe066" },
-      { title: "ZEITLUPE", desc: "Säulen halb so schnell", color: "#9cff9c" },
-      { title: "TURBO", desc: "Hochsprung", color: "#ffb366" },
-      { title: "SCHRUMPF", desc: "hitbox schrumpft", color: "#8df0c3" },
-      { title: "GROSS", desc: "fieser Debuff", color: "#ff8899" },
-    ];
-    const cardW = 190;
-    const cardH = 86;
-    const cardGap = 18;
-    const cardsPerRow = 3;
-    const cardsWidth = cardsPerRow * cardW + (cardsPerRow - 1) * cardGap;
-    const cardsStartX = WORLD_W / 2 - cardsWidth / 2;
-    const cardsStartY = startButtonRect.y + startButtonRect.h + 52;
+    // Idle player sprite
+    const spriteFade = Math.max(0, Math.min(1, (introAnimTimer - 0.7) / 0.5));
+    if (spriteFade > 0 && assets.logo && assets.logo.complete && assets.logo.naturalWidth > 0) {
+      const spriteSize = 48;
+      const sfx = Math.cos(globalTime * 1.2) * 2.2;
+      const sfy = Math.sin(globalTime * 1.8) * 4;
 
-    const headerFade = Math.max(0, Math.min(1, (introAnimTimer - 0.65) / 0.35));
-    ctx.globalAlpha = headerFade;
-    ctx.textAlign = "center";
-    ctx.textBaseline = "middle";
-    ctx.font = `600 17px ${SECONDARY_FONT}`;
-    ctx.fillStyle = "#9ef";
-    ctx.fillText("Lootbox Effekte", WORLD_W / 2, cardsStartY - 22);
-    ctx.globalAlpha = 1;
+      // Wink: squash every ~5s for 0.3s
+      if (_introWinkTimer >= 5) _introWinkTimer = -(0.3);
+      const winking = _introWinkTimer < 0 && _introWinkTimer > -0.3;
+      const winkT = winking ? Math.sin((-_introWinkTimer / 0.3) * Math.PI) : 0;
+      const wsx = 1 + winkT * 0.12;
+      const wsy = 1 - winkT * 0.1;
 
-    ctx.textAlign = "left";
-    ctx.textBaseline = "top";
-    effectCards.forEach((card, idx) => {
-      const delay = 0.75 + idx * 0.07;
-      const cardFade = Math.max(0, Math.min(1, (introAnimTimer - delay) / 0.3));
-      if (cardFade <= 0) return;
-      const col = idx % cardsPerRow;
-      const row = Math.floor(idx / cardsPerRow);
-      const x = cardsStartX + col * (cardW + cardGap);
-      const y = cardsStartY + row * (cardH + 16) + (1 - cardFade) * 10;
-      ctx.globalAlpha = cardFade;
-      ctx.fillStyle = "rgba(8,16,28,0.9)";
-      ctx.strokeStyle = "rgba(79,210,255,0.3)";
+      ctx.save();
+      ctx.globalAlpha = spriteFade * 0.92;
+      ctx.shadowColor = "rgba(79,180,255,0.5)";
+      ctx.shadowBlur = 12;
+      ctx.translate(leftCX + sfx, 472 + sfy);
+      ctx.scale(wsx, wsy);
+      ctx.drawImage(assets.logo, -spriteSize / 2, -spriteSize / 2, spriteSize, spriteSize);
+
+      // Wink particle (star) above sprite
+      if (winking && winkT > 0.3) {
+        ctx.globalAlpha = spriteFade * winkT * 0.9;
+        ctx.fillStyle = "#ffe066";
+        ctx.font = "16px sans-serif";
+        ctx.textAlign = "center";
+        ctx.textBaseline = "middle";
+        ctx.fillText("✦", 0, -spriteSize / 2 - 10 - winkT * 8);
+      }
+      ctx.restore();
+    }
+
+    // ── 3. Right column: leaderboard panel ──────────────────────────────
+    const lbX = 860, lbY = 90, lbW = 270, lbH = 420;
+    const lbFade = Math.max(0, Math.min(1, (introAnimTimer - 0.35) / 0.5));
+    if (lbFade > 0) {
+      ctx.save();
+      ctx.globalAlpha = lbFade;
+      ctx.translate(lbX, lbY);
+
+      // Panel background
+      ctx.fillStyle = "rgba(4,10,26,0.92)";
+      ctx.strokeStyle = "rgba(79,210,255,0.35)";
+      ctx.lineWidth = 1.5;
+      ctx.fillRect(0, 0, lbW, lbH);
+      ctx.strokeRect(0, 0, lbW, lbH);
+
+      // Cyan top accent
+      const accGrad = ctx.createLinearGradient(0, 0, lbW, 0);
+      accGrad.addColorStop(0, "rgba(79,210,255,0.0)");
+      accGrad.addColorStop(0.5, "rgba(79,210,255,0.6)");
+      accGrad.addColorStop(1, "rgba(79,210,255,0.0)");
+      ctx.fillStyle = accGrad;
+      ctx.fillRect(0, 0, lbW, 2);
+
+      // Title
+      ctx.textAlign = "center";
+      ctx.textBaseline = "middle";
+      ctx.font = `400 11px ${PRIMARY_FONT}`;
+      ctx.fillStyle = "#dff6ff";
+      ctx.shadowColor = "rgba(79,210,255,0.5)";
+      ctx.shadowBlur = 8;
+      ctx.fillText("LEADERBOARD", lbW / 2, 22);
+      ctx.shadowBlur = 0;
+      ctx.font = `400 12px ${SECONDARY_FONT}`;
+      ctx.fillStyle = "rgba(120,180,220,0.6)";
+      ctx.fillText("Top Spieler", lbW / 2, 42);
+
+      // Divider
+      ctx.strokeStyle = "rgba(79,160,255,0.2)";
       ctx.lineWidth = 1;
-      ctx.fillRect(x, y, cardW, cardH);
-      ctx.strokeRect(x, y, cardW, cardH);
-      ctx.fillStyle = card.color;
-      ctx.fillRect(x + 14, y + 18, 32, 32);
-      ctx.strokeStyle = "rgba(255,255,255,0.15)";
-      ctx.strokeRect(x + 14, y + 18, 32, 32);
-      ctx.font = `600 16px ${SECONDARY_FONT}`;
-      ctx.fillStyle = "#e8f6ff";
-      ctx.fillText(card.title, x + 54, y + 18);
-      ctx.font = `600 13px ${SECONDARY_FONT}`;
-      ctx.fillStyle = "#9ec9ff";
-      ctx.fillText(card.desc, x + 54, y + 40);
-    });
-    ctx.globalAlpha = 1;
+      ctx.beginPath();
+      ctx.moveTo(16, 56);
+      ctx.lineTo(lbW - 16, 56);
+      ctx.stroke();
 
+      // Entries
+      const lbListY = 64;
+      const lbListH = lbH - 64 - 56;
+      const lbRowH = 28;
+      ctx.save();
+      ctx.beginPath();
+      ctx.rect(8, lbListY, lbW - 16, lbListH);
+      ctx.clip();
+
+      const lbEntries = leaderboard.slice(0, 50);
+      if (!lbEntries.length) {
+        ctx.textAlign = "center";
+        ctx.font = `400 8px ${PRIMARY_FONT}`;
+        ctx.fillStyle = "rgba(120,160,200,0.5)";
+        ctx.fillText("KEINE SCORES", lbW / 2, lbListY + lbListH / 2);
+      } else {
+        const lbTotal = lbEntries.length * lbRowH;
+        const lbVisible = Math.ceil(lbListH / lbRowH);
+        const lbScroll = lbEntries.length > lbVisible ? leaderboardScrollOffset % lbTotal : 0;
+        const lbStart = Math.floor(lbScroll / lbRowH);
+        const lbOff = lbScroll % lbRowH;
+        const lbDraw = lbEntries.length > lbVisible ? lbVisible + 2 : lbEntries.length;
+
+        for (let i = 0; i < lbDraw; i++) {
+          const idx = (lbStart + i) % lbEntries.length;
+          const entry = lbEntries[idx];
+          const rank = idx + 1;
+          const rowY = lbListY + i * lbRowH - lbOff;
+          const rowMid = rowY + lbRowH / 2;
+          const isMe = playerName && entry.name === playerName;
+
+          ctx.fillStyle = rank <= 3 ? "rgba(255,211,107,0.08)" : isMe ? "rgba(79,200,255,0.08)" : "rgba(255,255,255,0.015)";
+          ctx.fillRect(8, rowY + 2, lbW - 16, lbRowH - 3);
+
+          const style = getLeaderboardEntryStyle(entry);
+          const baseColor = rank === 1 ? "#ffd36b" : rank === 2 ? "#d0d8e8" : rank === 3 ? "#e8a060" : isMe ? "#7fd4f8" : "#b0c8e0";
+          let dName = style.displayName || "";
+          if (dName.length > 12) dName = dName.slice(0, 11) + "…";
+
+          ctx.save();
+          if (rank <= 3) { ctx.shadowColor = baseColor; ctx.shadowBlur = 8; }
+          ctx.textBaseline = "middle";
+          ctx.font = `400 8px ${PRIMARY_FONT}`;
+          ctx.fillStyle = rank <= 3 ? baseColor : "rgba(160,200,230,0.6)";
+          ctx.textAlign = "left";
+          ctx.fillText(String(rank).padStart(2, "0"), 16, rowMid);
+          ctx.fillStyle = baseColor;
+          ctx.fillText(dName, 44, rowMid);
+          ctx.textAlign = "right";
+          ctx.fillStyle = "rgba(100,200,240,0.75)";
+          ctx.fillText(String(entry.score), lbW - 16, rowMid);
+          ctx.restore();
+        }
+      }
+      ctx.restore();
+
+      // Name anpassen button
+      const lbBtnY = lbH - 48;
+      const lbBtnX = 16;
+      const lbBtnW = lbW - 32;
+      const lbBtnH = 36;
+      ctx.fillStyle = "rgba(40,90,160,0.7)";
+      ctx.strokeStyle = "rgba(79,160,220,0.5)";
+      ctx.lineWidth = 1;
+      ctx.fillRect(lbBtnX, lbBtnY, lbBtnW, lbBtnH);
+      ctx.strokeRect(lbBtnX, lbBtnY, lbBtnW, lbBtnH);
+      ctx.textAlign = "center";
+      ctx.textBaseline = "middle";
+      ctx.font = `400 8px ${PRIMARY_FONT}`;
+      ctx.fillStyle = "#c8e8ff";
+      ctx.fillText("NAME ANPASSEN", lbBtnX + lbBtnW / 2, lbBtnY + lbBtnH / 2);
+      nameButtonCandidate = { x: lbX + lbBtnX, y: lbY + lbBtnY, w: lbBtnW, h: lbBtnH };
+
+      ctx.restore();
+    }
+
+    // ── 4. Footer credits ────────────────────────────────────────────────
+    const credFade = Math.max(0, Math.min(1, (introAnimTimer - 0.75) / 0.45));
+    ctx.save();
+    ctx.globalAlpha = credFade;
     ctx.textAlign = "center";
     ctx.textBaseline = "middle";
-    ctx.font = `600 14px ${SECONDARY_FONT}`;
-    ctx.fillStyle = "#728d96";
-    ctx.globalAlpha = headerFade;
-    ctx.fillText("Created By Patrick Dause", WORLD_W / 2, WORLD_H - 44);
-    ctx.fillText("Designed By Jennifer Linz", WORLD_W / 2, WORLD_H - 24);
-    ctx.globalAlpha = 1;
+    const devGlow = 0.55 + 0.45 * Math.sin(globalTime * 1.1);
+    ctx.font = `400 11px ${SECONDARY_FONT}`;
+    ctx.fillStyle = `rgba(130,175,210,${0.65 + 0.25 * devGlow})`;
+    ctx.shadowColor = "rgba(79,160,255,0.4)";
+    ctx.shadowBlur = 5 * devGlow;
+    ctx.fillText("Entwickelt von: Patrick Dause", WORLD_W / 2, WORLD_H - 36);
+    ctx.shadowBlur = 0;
+    ctx.font = `400 10px ${SECONDARY_FONT}`;
+    ctx.fillStyle = `rgba(80,110,140,${0.55 + 0.2 * devGlow})`;
+    ctx.fillText("Design: Katja Littawe  ·  Elisa Hikel  ·  Jennifer Linz", WORLD_W / 2, WORLD_H - 18);
+    ctx.restore();
 
     ctx.restore();
   } else {
     startButtonRect = null;
+    introNameRect = null;
+    introInputActive = false;
   }
 
     if (finalCongratsTimer > 0 && !gameOver) {
@@ -4320,7 +5040,7 @@ function drawUI() {
       ctx.fillStyle = "rgba(0,0,0,0.35)";
       ctx.fillRect(WORLD_W / 2 - 220, 40, 440, 94);
       ctx.fillStyle = "#d0f0ff";
-      ctx.font = `600 28px ${PRIMARY_FONT}`;
+      ctx.font = `400 16px ${PRIMARY_FONT}`;
       const congratsTitle = boss6Defeated ? "Herzlichen Glückwunsch!" : "Stark! Weiter geht's.";
       let congratsLine = "Weiter zum nächsten Boss.";
       if (boss6Defeated) {
@@ -4371,7 +5091,7 @@ function drawUI() {
         ctx.shadowColor = "rgba(80,255,160,0.75)";
         ctx.shadowBlur = 18 + 9 * Math.sin(globalTime * 2.5);
         ctx.fillStyle = "#b8ffe0";
-        ctx.font = `600 44px ${PRIMARY_FONT}`;
+        ctx.font = `400 22px ${PRIMARY_FONT}`;
         ctx.fillText("Du hast es geschafft!", WORLD_W / 2, WORLD_H / 2 - 140 + titleOffset);
         ctx.restore();
         ctx.globalAlpha = goContent;
@@ -4386,30 +5106,51 @@ function drawUI() {
         ctx.shadowColor = "rgba(255,70,70,0.7)";
         ctx.shadowBlur = 16 + 8 * Math.sin(globalTime * 2.3);
         ctx.fillStyle = "#e9f2ff";
-        ctx.font = `600 44px ${PRIMARY_FONT}`;
+        ctx.font = `400 24px ${PRIMARY_FONT}`;
         ctx.fillText("Game Over", WORLD_W / 2, WORLD_H / 2 - 110 + titleOffset);
         ctx.restore();
       }
 
+      // Floating particles (pure math, no state)
+      ctx.save();
+      for (let i = 0; i < 14; i++) {
+        const seed = i * 137.508;
+        const cycle = ((globalTime * 0.28 + seed * 0.01) % 1 + 1) % 1;
+        const px = WORLD_W * 0.15 + Math.sin(seed * 0.4) * WORLD_W * 0.45 + Math.sin(globalTime * 0.6 + i) * 18;
+        const py = WORLD_H * 0.88 - cycle * WORLD_H * 0.76;
+        const alpha = Math.sin(cycle * Math.PI) * 0.35 * goContent;
+        const r = 1.5 + Math.abs(Math.sin(seed * 2.1)) * 2;
+        ctx.globalAlpha = alpha;
+        ctx.fillStyle = i % 3 === 0 ? "#5099C9" : i % 3 === 1 ? "#ffe066" : "#9ef";
+        ctx.beginPath();
+        ctx.arc(px, py, r, 0, Math.PI * 2);
+        ctx.fill();
+      }
+      ctx.globalAlpha = 1;
+      ctx.restore();
+
       // Score & highscore – fade in with slight delay
       ctx.globalAlpha = goContent;
-      ctx.font = `600 26px ${SECONDARY_FONT}`;
+      ctx.font = `400 16px ${PRIMARY_FONT}`;
       ctx.fillStyle = "#e9f2ff";
-      ctx.fillText(`Punkte: ${score}`, WORLD_W / 2, WORLD_H / 2 - 30);
-      ctx.fillText(`Highscore: ${highscore}`, WORLD_W / 2, WORLD_H / 2 + 14);
-      ctx.font = `600 19px ${SECONDARY_FONT}`;
-      ctx.fillStyle = "#8fd3ff";
-      ctx.fillText("LEERTASTE / TAP zum Restart", WORLD_W / 2, WORLD_H / 2 + 56);
+      ctx.fillText(`Punkte: ${score}`, WORLD_W / 2, WORLD_H / 2 - 28);
+      ctx.fillStyle = score >= highscore && score > 0 ? "#ffe066" : "#9ec9ff";
+      if (score >= highscore && score > 0) { ctx.shadowColor = "#ffe066"; ctx.shadowBlur = 10; }
+      ctx.fillText(`Highscore: ${highscore}`, WORLD_W / 2, WORLD_H / 2 + 16);
+      ctx.shadowBlur = 0;
+      ctx.font = `600 13px ${SECONDARY_FONT}`;
+      ctx.fillStyle = "#7ab4d8";
+      ctx.fillText("LEERTASTE / TAP zum Restart", WORLD_W / 2, WORLD_H / 2 + 54);
 
       // CTA Button – pulsing glow, rounded
       ctx.globalAlpha = goBtn;
-      const btnW = 320;
-      const btnH = 50;
-      gameOverLinkRect = { x: WORLD_W / 2 - btnW / 2, y: WORLD_H / 2 + 112, w: btnW, h: btnH };
+      const btnW = 340;
+      const btnH = 52;
+      gameOverLinkRect = { x: WORLD_W / 2 - btnW / 2, y: WORLD_H / 2 + 110, w: btnW, h: btnH };
       const btnPulse = 0.78 + 0.22 * Math.sin(globalTime * 3.6);
       ctx.save();
-      ctx.shadowColor = `rgba(80,153,201,${0.85 * btnPulse})`;
-      ctx.shadowBlur = 20 * btnPulse;
+      ctx.shadowColor = `rgba(80,153,201,${0.9 * btnPulse})`;
+      ctx.shadowBlur = 22 * btnPulse;
       const btnGrad = ctx.createLinearGradient(gameOverLinkRect.x, gameOverLinkRect.y, gameOverLinkRect.x + btnW, gameOverLinkRect.y + btnH);
       btnGrad.addColorStop(0, "#5099C9");
       btnGrad.addColorStop(1, "#2E6BA8");
@@ -4427,19 +5168,62 @@ function drawUI() {
       ctx.quadraticCurveTo(gameOverLinkRect.x, gameOverLinkRect.y, gameOverLinkRect.x + br, gameOverLinkRect.y);
       ctx.closePath();
       ctx.fill();
-      ctx.strokeStyle = `rgba(130,210,255,${0.75 * btnPulse})`;
+      ctx.strokeStyle = `rgba(130,210,255,${0.8 * btnPulse})`;
       ctx.lineWidth = 1.5;
       ctx.stroke();
       ctx.restore();
       ctx.fillStyle = "#e3f6ff";
-      ctx.font = `600 18px ${SECONDARY_FONT}`;
+      ctx.font = `600 17px ${SECONDARY_FONT}`;
       ctx.fillText("Werde Teil des Teams #SuperNova", WORLD_W / 2, gameOverLinkRect.y + btnH / 2);
 
+      // Animated credits panel
       ctx.globalAlpha = goCredits;
-      ctx.font = `600 14px ${SECONDARY_FONT}`;
-      ctx.fillStyle = "#728d96";
-      ctx.fillText("Created By Patrick Dause", WORLD_W / 2, WORLD_H - 44);
-      ctx.fillText("Designed By Jennifer Linz", WORLD_W / 2, WORLD_H - 24);
+      ctx.save();
+      const credY = WORLD_H - 68;
+      // separator line
+      ctx.strokeStyle = `rgba(79,130,200,${0.4 * goCredits})`;
+      ctx.lineWidth = 1;
+      ctx.beginPath();
+      ctx.moveTo(WORLD_W / 2 - 210, credY - 4);
+      ctx.lineTo(WORLD_W / 2 + 210, credY - 4);
+      ctx.stroke();
+      ctx.textAlign = "center";
+      ctx.textBaseline = "middle";
+      // Dev credit – subtle glow pulse
+      const devPulse = 0.65 + 0.35 * Math.sin(globalTime * 1.1);
+      ctx.save();
+      ctx.font = `400 11px ${SECONDARY_FONT}`;
+      ctx.fillStyle = `rgba(130,175,210,${0.7 + 0.3 * devPulse})`;
+      ctx.shadowColor = "rgba(79,160,255,0.5)";
+      ctx.shadowBlur = 6 * devPulse;
+      ctx.fillText("Entwickelt von: Patrick Dause", WORLD_W / 2, credY + 12);
+      ctx.restore();
+      // Design credits – cycle glow across the three names
+      const designNames = ["Katja Littawe", "Elisa Hikel", "Jennifer Linz"];
+      const nameHighlight = Math.floor((globalTime * 0.5) % designNames.length);
+      const parts = [
+        { text: "Design: ", highlight: false },
+        { text: "Katja Littawe", highlight: nameHighlight === 0 },
+        { text: "  ·  ", highlight: false },
+        { text: "Elisa Hikel", highlight: nameHighlight === 1 },
+        { text: "  ·  ", highlight: false },
+        { text: "Jennifer Linz", highlight: nameHighlight === 2 },
+      ];
+      // measure total width
+      ctx.font = `400 10px ${SECONDARY_FONT}`;
+      let totalW = 0;
+      parts.forEach(p => { totalW += ctx.measureText(p.text).width; });
+      let drawX = WORLD_W / 2 - totalW / 2;
+      ctx.textAlign = "left";
+      ctx.textBaseline = "middle";
+      parts.forEach(p => {
+        ctx.fillStyle = p.highlight ? "#9ef" : "#6a8099";
+        if (p.highlight) { ctx.shadowColor = "#9ef"; ctx.shadowBlur = 8; }
+        ctx.fillText(p.text, drawX, credY + 34);
+        if (p.highlight) ctx.shadowBlur = 0;
+        drawX += ctx.measureText(p.text).width;
+      });
+      ctx.restore();
 
       ctx.globalAlpha = 1;
       ctx.restore();
@@ -4448,8 +5232,87 @@ function drawUI() {
     }
 
   nameButtonRect = nameButtonCandidate;
+
+  // Audio toggle buttons — always visible, bottom-right corner
+  {
+    const btnSize = 32;
+    const gap = 6;
+    const bx2 = WORLD_W - btnSize - 14;
+    const bx1 = bx2 - btnSize - gap;
+    const by = WORLD_H - btnSize - 14;
+
+    function _drawAudioBtn(bx, by, active, label) {
+      ctx.save();
+      ctx.fillStyle = active ? "rgba(58,148,220,0.85)" : "rgba(8,14,30,0.75)";
+      ctx.strokeStyle = active ? "rgba(120,200,255,0.7)" : "rgba(80,120,160,0.4)";
+      ctx.lineWidth = 1.5;
+      const r = 6;
+      ctx.beginPath();
+      ctx.moveTo(bx + r, by);
+      ctx.lineTo(bx + btnSize - r, by);
+      ctx.quadraticCurveTo(bx + btnSize, by, bx + btnSize, by + r);
+      ctx.lineTo(bx + btnSize, by + btnSize - r);
+      ctx.quadraticCurveTo(bx + btnSize, by + btnSize, bx + btnSize - r, by + btnSize);
+      ctx.lineTo(bx + r, by + btnSize);
+      ctx.quadraticCurveTo(bx, by + btnSize, bx, by + btnSize - r);
+      ctx.lineTo(bx, by + r);
+      ctx.quadraticCurveTo(bx, by, bx + r, by);
+      ctx.closePath();
+      ctx.fill();
+      ctx.stroke();
+      ctx.textAlign = "center";
+      ctx.textBaseline = "middle";
+      ctx.font = `${btnSize * 0.52}px sans-serif`;
+      ctx.globalAlpha = active ? 1 : 0.45;
+      ctx.fillStyle = "#fff";
+      ctx.fillText(label, bx + btnSize / 2, by + btnSize / 2 + 1);
+      ctx.restore();
+    }
+
+    _drawAudioBtn(bx1, by, audio.musicEnabled, "♪");
+    _drawAudioBtn(bx2, by, audio.sfxEnabled, "🔊");
+    audioMusicToggleRect = { x: bx1, y: by, w: btnSize, h: btnSize };
+    audioSfxToggleRect = { x: bx2, y: by, w: btnSize, h: btnSize };
+  }
+
   ctx.restore();
 }
+  function drawScorePopups() {
+    if (scorePopups.length === 0) return;
+    ctx.save();
+    ctx.font = `400 16px ${PRIMARY_FONT}`;
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    for (const p of scorePopups) {
+      const fade = Math.min(1, p.life / 0.4);
+      ctx.globalAlpha = fade;
+      ctx.shadowColor = '#7ff';
+      ctx.shadowBlur = 8;
+      ctx.fillStyle = '#aef7ff';
+      ctx.fillText(p.text, p.x, p.y);
+    }
+    ctx.restore();
+  }
+
+  function drawPauseOverlay() {
+    if (!gamePaused) return;
+    ctx.save();
+    ctx.fillStyle = 'rgba(0,0,0,0.55)';
+    ctx.fillRect(0, 0, WORLD_W, WORLD_H);
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.font = `400 32px ${PRIMARY_FONT}`;
+    ctx.fillStyle = '#e2f1ff';
+    ctx.shadowColor = 'rgba(100,180,255,0.8)';
+    ctx.shadowBlur = 20;
+    ctx.fillText('PAUSE', WORLD_W / 2, WORLD_H / 2 - 20);
+    ctx.font = `600 14px ${SECONDARY_FONT}`;
+    ctx.fillStyle = 'rgba(180,210,240,0.7)';
+    ctx.shadowBlur = 0;
+    ctx.fillText('P oder Escape zum Fortsetzen', WORLD_W / 2, WORLD_H / 2 + 30);
+    ctx.restore();
+  }
+
   function drawEverything() {
     beginFrame();
     drawBackground();
@@ -4478,6 +5341,8 @@ function drawUI() {
     }
 
     if (bossTransitionActive) drawBossTransition();
+    drawScorePopups();
+    drawPauseOverlay();
     endFrame();
   }
 
@@ -4504,12 +5369,12 @@ function drawUI() {
     // Text
     ctx.save();
     ctx.fillStyle = "#e2f1ff";
-    ctx.font = `600 44px ${PRIMARY_FONT}`;
+    ctx.font = `400 20px ${PRIMARY_FONT}`;
     ctx.textAlign = "center";
     ctx.textBaseline = "middle";
     ctx.fillText("Boss erscheint...", cx, cy - 10);
-    ctx.font = `600 20px ${SECONDARY_FONT}`;
-    ctx.fillText("Bereit machen...", cx, cy + 24);
+    ctx.font = `600 18px ${SECONDARY_FONT}`;
+    ctx.fillText("Bereit machen...", cx, cy + 28);
     ctx.restore();
   }
 
@@ -4517,18 +5382,42 @@ function drawUI() {
   //  Loop
   // ======================================================
   function loop(ts) {
-    const dt = (ts - lastTime) / 1000 || 0;
+    rawDt = Math.min((ts - lastTime) / 1000, 0.05);
+    const dt = gamePaused ? 0 : rawDt;
     lastTime = ts;
+    // Screen shake update
+    if (shakeMag > 0) {
+      shakeX = (Math.random() - 0.5) * shakeMag * 2;
+      shakeY = (Math.random() - 0.5) * shakeMag * 2;
+      shakeMag = Math.max(0, shakeMag - shakeDecay * rawDt * 60);
+    } else { shakeX = 0; shakeY = 0; }
+    // Hit flash decay
+    if (playerHitFlash > 0) playerHitFlash = Math.max(0, playerHitFlash - rawDt * 60);
+    if (currentBoss && currentBoss.hitFlash > 0) currentBoss.hitFlash = Math.max(0, currentBoss.hitFlash - rawDt * 60);
+    // Score popup update
+    for (let i = scorePopups.length - 1; i >= 0; i--) {
+      const p = scorePopups[i];
+      p.life -= rawDt;
+      p.y -= 55 * rawDt;
+      if (p.life <= 0) scorePopups.splice(i, 1);
+    }
     if (leaderboard.length > 0) {
       const scrollRange = Math.max(LEADERBOARD_ENTRY_HEIGHT * leaderboard.length, 1);
-      leaderboardScrollOffset = (leaderboardScrollOffset + dt * LEADERBOARD_SCROLL_SPEED) % scrollRange;
+      leaderboardScrollOffset = (leaderboardScrollOffset + rawDt * LEADERBOARD_SCROLL_SPEED) % scrollRange;
     } else {
       leaderboardScrollOffset = 0;
     }
-    globalTime += dt;
-    if (!gameRunning && !gameOver) introAnimTimer += dt;
-    if (gameOver) gameOverAnimTimer += dt;
-    update(dt);
+    globalTime += rawDt;
+    if (!gameRunning && !gameOver) {
+      introAnimTimer += rawDt; introInputBlinkTimer += rawDt;
+      _introGlitchTimer += rawDt;
+      _introWinkTimer += rawDt;
+      if (_introButtonTap > 0) _introButtonTap = Math.max(0, _introButtonTap - rawDt / 0.12);
+    }
+    if (gameOver) gameOverAnimTimer += rawDt;
+    if (scoreFlashTimer > 0) scoreFlashTimer = Math.max(0, scoreFlashTimer - rawDt);
+    _musicUpdate(rawDt);
+    if (!gamePaused) update(dt);
     drawEverything();
     requestAnimationFrame(loop);
   }
