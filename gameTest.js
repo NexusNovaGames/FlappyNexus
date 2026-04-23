@@ -4132,12 +4132,11 @@ Boss erscheint.`,
       ctx.fillRect(b.x - 80, b.y - 80, 160, 160);
     }
 
-    if (b.hitFlash > 0) {
+    if (b.hitFlash > 0 && b.img.complete) {
       ctx.save();
-      ctx.globalAlpha = (b.hitFlash / 3) * 0.6;
+      ctx.globalAlpha = (b.hitFlash / 3) * 0.7;
       ctx.globalCompositeOperation = 'lighter';
-      ctx.fillStyle = '#88ccff';
-      ctx.fillRect(b.x - b.width / 2, b.y - b.height / 2, b.width, b.height);
+      ctx.drawImage(b.img, b.x - b.width / 2, b.y - b.height / 2, b.width, b.height);
       ctx.restore();
     }
 
