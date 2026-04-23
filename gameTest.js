@@ -4853,40 +4853,6 @@ function drawUI() {
     ctx.fillText("Leertaste / Tap", leftCX, startButtonRect.y + btnH / 2 + 14);
     ctx.restore();
 
-    // Idle player sprite
-    const spriteFade = Math.max(0, Math.min(1, (introAnimTimer - 0.7) / 0.5));
-    if (spriteFade > 0 && assets.logo && assets.logo.complete && assets.logo.naturalWidth > 0) {
-      const spriteSize = 48;
-      const sfx = Math.cos(globalTime * 1.2) * 2.2;
-      const sfy = Math.sin(globalTime * 1.8) * 4;
-
-      // Wink: squash every ~5s for 0.3s
-      if (_introWinkTimer >= 5) _introWinkTimer = -(0.3);
-      const winking = _introWinkTimer < 0 && _introWinkTimer > -0.3;
-      const winkT = winking ? Math.sin((-_introWinkTimer / 0.3) * Math.PI) : 0;
-      const wsx = 1 + winkT * 0.12;
-      const wsy = 1 - winkT * 0.1;
-
-      ctx.save();
-      ctx.globalAlpha = spriteFade * 0.92;
-      ctx.shadowColor = "rgba(79,180,255,0.5)";
-      ctx.shadowBlur = 12;
-      ctx.translate(leftCX + sfx, 472 + sfy);
-      ctx.scale(wsx, wsy);
-      ctx.drawImage(assets.logo, -spriteSize / 2, -spriteSize / 2, spriteSize, spriteSize);
-
-      // Wink particle (star) above sprite
-      if (winking && winkT > 0.3) {
-        ctx.globalAlpha = spriteFade * winkT * 0.9;
-        ctx.fillStyle = "#ffe066";
-        ctx.font = "16px sans-serif";
-        ctx.textAlign = "center";
-        ctx.textBaseline = "middle";
-        ctx.fillText("✦", 0, -spriteSize / 2 - 10 - winkT * 8);
-      }
-      ctx.restore();
-    }
-
     // ── 3. Right column: leaderboard panel ──────────────────────────────
     const lbX = 860, lbY = 90, lbW = 270, lbH = 420;
     const lbFade = Math.max(0, Math.min(1, (introAnimTimer - 0.35) / 0.5));
