@@ -116,6 +116,8 @@ document.addEventListener("DOMContentLoaded", () => {
   let viewOffsetX = 0;
   let viewOffsetY = 0;
   let dpr = 1;
+  // Declared early to avoid TDZ when resizeCanvas → _updateRotateOverlay → _musicPause/Resume runs
+  let _musEl = null, _musOut = null, _musIn = null;
 
   function isMobile() {
     return window.matchMedia("(pointer: coarse)").matches
@@ -336,10 +338,8 @@ document.addEventListener("DOMContentLoaded", () => {
       nnAnthem:      ['https://cdn.jsdelivr.net/gh/NexusNovaGames/FlappyNexus@main/assets/audio/nn-anthem.mp3'],
     },
   };
-  let _musEl = null;      // active HTMLAudioElement
+  // _musEl, _musOut, _musIn declared near top of scope (above resizeCanvas call)
   let _musKey = null;     // active track key
-  let _musOut = null;     // { el, from, dur, elapsed, onDone } — outgoing fade
-  let _musIn  = null;     // { el, to, dur, elapsed }           — incoming fade
 
   function audioLoad() {
     try {
