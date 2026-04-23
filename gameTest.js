@@ -167,7 +167,6 @@ document.addEventListener("DOMContentLoaded", () => {
     viewOffsetY = (viewH - WORLD_H * viewScale) / 2;
 
     mobileScale = isMobile() ? 1.3 : 1;
-    trailMaxLength = isMobile() ? 14 : 26;
   }
 
   window.addEventListener("resize", resizeCanvas);
