@@ -30,7 +30,9 @@ document.addEventListener("DOMContentLoaded", () => {
   }
   function _updateRotateOverlay() {
     if (!_rotateEl) return;
-    _rotateEl.style.display = (window.matchMedia('(pointer:coarse)').matches && window.innerHeight > window.innerWidth) ? 'flex' : 'none';
+    const show = window.matchMedia('(pointer:coarse)').matches && window.innerHeight > window.innerWidth;
+    _rotateEl.style.display = show ? 'flex' : 'none';
+    if (show) { _musicPause(); } else { _musicResume(); }
   }
 
   canvas.style.webkitTapHighlightColor = "transparent";
@@ -5325,7 +5327,7 @@ function drawUI() {
     }
 
     _drawAudioBtn(bx1, by, audio.musicEnabled, "♪");
-    _drawAudioBtn(bx2, by, audio.sfxEnabled, "🔊");
+    _drawAudioBtn(bx2, by, audio.sfxEnabled, "⚡");
     audioMusicToggleRect = { x: bx1, y: by, w: btnSize, h: btnSize };
     audioSfxToggleRect = { x: bx2, y: by, w: btnSize, h: btnSize };
   }
