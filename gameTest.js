@@ -5117,10 +5117,11 @@ function drawUI() {
     ctx.fillStyle = `rgba(130,175,210,${0.65 + 0.25 * devGlow})`;
     ctx.shadowColor = "rgba(79,160,255,0.4)";
     ctx.shadowBlur = 5 * devGlow;
-    ctx.fillText("Entwickelt von: Patrick Dause", WORLD_W / 2, WORLD_H - 36);
+    ctx.fillText("Entwickelt von: Patrick Dause", WORLD_W / 2, WORLD_H - 50);
     ctx.shadowBlur = 0;
     ctx.font = `400 10px ${SECONDARY_FONT}`;
     ctx.fillStyle = `rgba(80,110,140,${0.55 + 0.2 * devGlow})`;
+    ctx.fillText("Musik: Patrick Dause", WORLD_W / 2, WORLD_H - 34);
     ctx.fillText("Design: Katja Littawe  ·  Elisa Hikel  ·  Jennifer Linz", WORLD_W / 2, WORLD_H - 18);
     ctx.restore();
 
@@ -5277,7 +5278,7 @@ function drawUI() {
       // Animated credits panel
       ctx.globalAlpha = goCredits;
       ctx.save();
-      const credY = WORLD_H - 68;
+      const credY = WORLD_H - 76;
       // separator line
       ctx.strokeStyle = `rgba(79,130,200,${0.4 * goCredits})`;
       ctx.lineWidth = 1;
@@ -5294,8 +5295,11 @@ function drawUI() {
       ctx.fillStyle = `rgba(130,175,210,${0.7 + 0.3 * devPulse})`;
       ctx.shadowColor = "rgba(79,160,255,0.5)";
       ctx.shadowBlur = 6 * devPulse;
-      ctx.fillText("Entwickelt von: Patrick Dause", WORLD_W / 2, credY + 12);
+      ctx.fillText("Entwickelt von: Patrick Dause", WORLD_W / 2, credY + 8);
       ctx.restore();
+      ctx.font = `400 10px ${SECONDARY_FONT}`;
+      ctx.fillStyle = `rgba(80,110,140,${0.55 + 0.2 * devPulse})`;
+      ctx.fillText("Musik: Patrick Dause", WORLD_W / 2, credY + 22);
       // Design credits – cycle glow across the three names
       const designNames = ["Katja Littawe", "Elisa Hikel", "Jennifer Linz"];
       const nameHighlight = Math.floor((globalTime * 0.5) % designNames.length);
@@ -5317,7 +5321,7 @@ function drawUI() {
       parts.forEach(p => {
         ctx.fillStyle = p.highlight ? "#9ef" : "#6a8099";
         if (p.highlight) { ctx.shadowColor = "#9ef"; ctx.shadowBlur = 8; }
-        ctx.fillText(p.text, drawX, credY + 34);
+        ctx.fillText(p.text, drawX, credY + 38);
         if (p.highlight) ctx.shadowBlur = 0;
         drawX += ctx.measureText(p.text).width;
       });
