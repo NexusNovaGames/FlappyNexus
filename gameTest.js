@@ -35,6 +35,38 @@ document.addEventListener("DOMContentLoaded", () => {
     if (show) { _musicPause(); } else { _musicResume(); }
   }
 
+  // ── Pre-load splash screen ───────────────────────────────────
+  let _splashEl = document.createElement('div');
+  _splashEl.style.cssText =
+    'position:fixed;inset:0;z-index:10000;' +
+    'background:#020712 url("https://cdn.jsdelivr.net/gh/NexusNovaGames/FlappyNexus@main/startscreen.png") center/cover no-repeat;' +
+    'display:flex;align-items:flex-end;justify-content:center;' +
+    'padding-bottom:max(60px,9vh);box-sizing:border-box;cursor:pointer;' +
+    '-webkit-tap-highlight-color:transparent;';
+  const _splashBtn = document.createElement('button');
+  _splashBtn.textContent = 'SPIELEN';
+  _splashBtn.style.cssText =
+    'pointer-events:none;background:rgba(4,16,40,0.78);border:2px solid rgba(79,210,255,0.8);outline:none;' +
+    'color:#cdeeff;font-family:"Press Start 2P",monospace;font-size:18px;' +
+    'letter-spacing:.08em;padding:16px 52px;' +
+    'text-shadow:0 0 12px rgba(79,210,255,.7);' +
+    'box-shadow:0 0 28px rgba(79,210,255,.35),inset 0 0 12px rgba(79,210,255,.08);';
+  _splashEl.appendChild(_splashBtn);
+  document.body.appendChild(_splashEl);
+
+  function _dismissSplash() {
+    if (!_splashEl) return;
+    const el = _splashEl;
+    _splashEl = null;
+    el.style.transition = 'opacity .45s ease';
+    el.style.opacity = '0';
+    setTimeout(() => { try { el.remove(); } catch (_) {} }, 500);
+    try { document.documentElement.requestFullscreen?.().catch(() => {}); } catch (_) {}
+    if (!audio.musicEnabled) audioToggleMusic();
+  }
+  _splashEl.addEventListener('click', _dismissSplash);
+  _splashEl.addEventListener('touchend', function(e) { e.preventDefault(); _dismissSplash(); }, { passive: false });
+
   canvas.style.webkitTapHighlightColor = "transparent";
   canvas.style.webkitTouchCallout = "none";
   canvas.style.webkitUserSelect = "none";
@@ -4492,6 +4524,10 @@ function drawUI() {
   let nameButtonCandidate = null;
 
   const ms = mobileScale;
+  // Visible safe bottom in world coords — 30 CSS-px margin covers home-indicator/notch.
+  const safeWorldBottom = isMobile()
+    ? Math.min(WORLD_H, (viewH - 30 - viewOffsetY) / viewScale)
+    : WORLD_H;
   ctx.textAlign = "left";
   ctx.textBaseline = "top";
   ctx.fillStyle = "#8fd3ff";
@@ -4553,7 +4589,9 @@ function drawUI() {
   const boardW = 260;
   const boardX = WORLD_W - boardW - 26;
   const boardY = 30;
-  const boardH = WORLD_H - 60;
+  const boardH = isMobile()
+    ? Math.max(200, Math.min(WORLD_H - 60, Math.floor(safeWorldBottom) - boardY - 10))
+    : WORLD_H - 60;
 
   if (showLeaderboardPanel) {
     ctx.save();
@@ -5296,7 +5334,7 @@ function drawUI() {
     const gap = 6;
     const bx1 = 14;
     const bx2 = bx1 + btnSize + gap;
-    const by = WORLD_H - btnSize - 14;
+    const by = Math.round(Math.min(WORLD_H - btnSize - 14, safeWorldBottom - btnSize - 10));
 
     function _drawAudioBtn(bx, by, active, label) {
       ctx.save();
