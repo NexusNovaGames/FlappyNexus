@@ -1535,6 +1535,7 @@ Boss erscheint.`,
     bossLoot.length = 0;
     bossObstacles.length = 0;
     _musicStop(0.6);
+    setTimeout(() => { if (gameOver) _musicPlay('titleScreen'); }, 1400);
     highscore = Math.max(highscore, score);
     try {
       localStorage.setItem("jumping-nexus-highscore", String(highscore));
