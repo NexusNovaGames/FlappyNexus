@@ -4418,30 +4418,8 @@ Boss erscheint.`,
     ctx.translate(player.x, player.y);
     ctx.rotate(player.rotation);
 
-    // Velocity-driven squash & stretch — compress Y / widen X when jumping, stretch Y when falling
-    const _sqRatio = Math.max(-1, Math.min(1, player.vy / 520));
-    if (Math.abs(_sqRatio) > 0.03) ctx.scale(1 - _sqRatio * 0.13, 1 + _sqRatio * 0.13);
-
     const img = assets.logo;
     const r = player.radius;
-
-    // Thruster particles streaming from behind (desktop only)
-    if (!perfMode) {
-      ctx.save();
-      for (let i = 0; i < 5; i++) {
-        const phase = (globalTime * 9 + i * 0.72) % 1;
-        const dist  = phase * r * 1.5;
-        const sz    = (1 - phase) * r * 0.36;
-        const oy    = Math.sin(globalTime * 15 + i * 2.1) * r * 0.26;
-        ctx.globalAlpha = (1 - phase) * 0.55;
-        ctx.fillStyle   = phase < 0.35 ? '#cef' : phase < 0.65 ? '#79f' : '#336';
-        ctx.beginPath();
-        ctx.arc(-r - dist, oy, Math.max(0.5, sz), 0, Math.PI * 2);
-        ctx.fill();
-      }
-      ctx.globalAlpha = 1;
-      ctx.restore();
-    }
 
     if (player.ghostTimer > 0) ctx.globalAlpha = 0.35;
     if (player.legendary) {
@@ -4478,28 +4456,6 @@ Boss erscheint.`,
       ctx.beginPath();
       ctx.arc(0, 0, r, 0, Math.PI * 2);
       ctx.fill();
-    }
-
-    // Energy wings — extend on jump, fade as player slows (desktop only)
-    const _jumpI = Math.max(0, -player.vy / 680);
-    if (_jumpI > 0.06 && !perfMode) {
-      const wl = r * 2.1 * Math.min(1, _jumpI);
-      ctx.save();
-      ctx.globalAlpha = Math.min(1, _jumpI) * 0.72;
-      ctx.lineWidth = 2;
-      ctx.lineCap = 'round';
-      ctx.strokeStyle = `rgba(140,220,255,${_jumpI})`;
-      ctx.shadowColor = '#9df';
-      ctx.shadowBlur = 14 * _jumpI;
-      ctx.beginPath();
-      ctx.moveTo(-r * 0.3, r * 0.15);
-      ctx.quadraticCurveTo(-r * 1.1, -r * 1.3, -wl, -r * 0.25);
-      ctx.stroke();
-      ctx.beginPath();
-      ctx.moveTo(r * 0.3, r * 0.15);
-      ctx.quadraticCurveTo(r * 1.1, -r * 1.3, wl, -r * 0.25);
-      ctx.stroke();
-      ctx.restore();
     }
 
     if (playerHitFlash > 0) {
@@ -5161,7 +5117,7 @@ function drawUI() {
     ctx.fillStyle = `rgba(130,175,210,${0.65 + 0.25 * devGlow})`;
     ctx.shadowColor = "rgba(79,160,255,0.4)";
     ctx.shadowBlur = 5 * devGlow;
-    ctx.fillText("Entwickelt von: Patrick Dause", WORLD_W / 2, WORLD_H - 50);
+    ctx.fillText("Gamedesign: Patrick Dause", WORLD_W / 2, WORLD_H - 50);
     ctx.shadowBlur = 0;
     ctx.font = `400 10px ${SECONDARY_FONT}`;
     ctx.fillStyle = `rgba(80,110,140,${0.55 + 0.2 * devGlow})`;
@@ -5339,7 +5295,7 @@ function drawUI() {
       ctx.fillStyle = `rgba(130,175,210,${0.7 + 0.3 * devPulse})`;
       ctx.shadowColor = "rgba(79,160,255,0.5)";
       ctx.shadowBlur = 6 * devPulse;
-      ctx.fillText("Entwickelt von: Patrick Dause", WORLD_W / 2, credY + 8);
+      ctx.fillText("Gamedesign: Patrick Dause", WORLD_W / 2, credY + 8);
       ctx.restore();
       ctx.font = `400 10px ${SECONDARY_FONT}`;
       ctx.fillStyle = `rgba(80,110,140,${0.55 + 0.2 * devPulse})`;
