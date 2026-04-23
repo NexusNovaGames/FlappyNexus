@@ -90,7 +90,7 @@ document.addEventListener("DOMContentLoaded", () => {
   function isPortrait() {
     return window.innerHeight > window.innerWidth;
   }
-  let mobileScale = isMobile() ? 1.4 : 1;
+  let mobileScale = isMobile() ? 1.7 : 1;
   let perfMode = isMobile();
   let _gameOverLockTimer = 0;
   let _firstTapDone = false;
@@ -209,12 +209,22 @@ document.addEventListener("DOMContentLoaded", () => {
     window.__NN_W = viewW;
     window.__NN_H = viewH;
 
-    viewScale = Math.min(viewW / WORLD_W, viewH / WORLD_H);
-    viewOffsetX = (viewW - WORLD_W * viewScale) / 2;
-    viewOffsetY = (viewH - WORLD_H * viewScale) / 2;
+    if (isMobile()) {
+      // Fill full screen width — no side letterbox bars on tall phones (iPhone 14 etc.).
+      // Top/bottom may clip by ~16px which is acceptable at WORLD_H/2 player center.
+      viewScale = viewW / WORLD_W;
+      viewOffsetX = 0;
+      viewOffsetY = (viewH - WORLD_H * viewScale) / 2;
+    } else {
+      viewScale = Math.min(viewW / WORLD_W, viewH / WORLD_H);
+      viewOffsetX = (viewW - WORLD_W * viewScale) / 2;
+      viewOffsetY = (viewH - WORLD_H * viewScale) / 2;
+    }
 
-    // Scale HUD larger when game is rendered small (phones have viewScale ~0.5)
-    mobileScale = isMobile() ? Math.max(1.4, Math.min(1.9, 0.85 / viewScale)) : 1.0;
+    // Target: HUD text ≈ real screen pixels regardless of viewScale.
+    // Formula: 1.0/viewScale makes world-px × viewScale = 1 screen-px per base-px.
+    // Clamped 1.7–2.2 so it doesn't blow up on portrait or tiny viewports.
+    mobileScale = isMobile() ? Math.max(1.7, Math.min(2.2, 1.0 / viewScale)) : 1.0;
     perfMode = isMobile();
   }
 
@@ -300,7 +310,7 @@ document.addEventListener("DOMContentLoaded", () => {
   function audioLoad() {
     try {
       const s = JSON.parse(localStorage.getItem('jumping-nexus-audio') || '{}');
-      audio.musicEnabled = s.music === true;
+      audio.musicEnabled = false; // always start muted — user opts in via ♪ button
       audio.sfxEnabled = s.sfx === true;
     } catch (e) {}
   }
