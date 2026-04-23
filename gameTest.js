@@ -58,7 +58,8 @@ document.addEventListener("DOMContentLoaded", () => {
   function isPortrait() {
     return window.innerHeight > window.innerWidth;
   }
-  let mobileScale = isMobile() ? 1.3 : 1;
+  let mobileScale = isMobile() ? 1.4 : 1;
+  let perfMode = isMobile();
   let _gameOverLockTimer = 0;
   let _firstTapDone = false;
   const FONT_LINK =
@@ -149,11 +150,19 @@ document.addEventListener("DOMContentLoaded", () => {
   let nameErrorLabel = null;
 
   function resizeCanvas() {
-    const rect = canvas.getBoundingClientRect();
     dpr = Math.max(1, window.devicePixelRatio || 1);
 
-    viewW = rect.width;
-    viewH = rect.height;
+    // Use window dimensions directly so we always fill the real viewport,
+    // even when the canvas is inside a Webflow embed with constrained height.
+    viewW = window.innerWidth;
+    viewH = window.innerHeight;
+
+    // Force canvas CSS to match — overrides any container CSS
+    canvas.style.position = 'fixed';
+    canvas.style.top = '0';
+    canvas.style.left = '0';
+    canvas.style.width = viewW + 'px';
+    canvas.style.height = viewH + 'px';
 
     canvas.width = Math.round(viewW * dpr);
     canvas.height = Math.round(viewH * dpr);
@@ -166,7 +175,9 @@ document.addEventListener("DOMContentLoaded", () => {
     viewOffsetX = (viewW - WORLD_W * viewScale) / 2;
     viewOffsetY = (viewH - WORLD_H * viewScale) / 2;
 
-    mobileScale = isMobile() ? 1.3 : 1;
+    // Scale HUD larger when game is rendered small (phones have viewScale ~0.5)
+    mobileScale = isMobile() ? Math.max(1.4, Math.min(1.9, 0.85 / viewScale)) : 1.0;
+    perfMode = isMobile();
   }
 
   window.addEventListener("resize", resizeCanvas);
@@ -4336,7 +4347,7 @@ Boss erscheint.`,
       ctx.scale(pulse, pulse);
     }
 
-    if (player.pickupFlashTimer > 0) {
+    if (player.pickupFlashTimer > 0 && !perfMode) {
       ctx.shadowColor = player.pickupFlashColor;
       ctx.shadowBlur = 22;
     }
@@ -4445,7 +4456,7 @@ function drawUI() {
   ctx.scale(scoreScale, scoreScale);
   ctx.font = `400 ${Math.round(18 * ms)}px ${PRIMARY_FONT}`;
   ctx.fillStyle = scoreFlashTimer > 0 ? "#ffe066" : "#fff";
-  if (scoreFlashTimer > 0) { ctx.shadowColor = "#ffe066"; ctx.shadowBlur = 14; }
+  if (scoreFlashTimer > 0 && !perfMode) { ctx.shadowColor = "#ffe066"; ctx.shadowBlur = 14; }
   ctx.fillText(`Punkte: ${score}`, 0, 0);
   ctx.restore();
 
@@ -5229,13 +5240,13 @@ function drawUI() {
 
   nameButtonRect = nameButtonCandidate;
 
-  // Audio toggle buttons — always visible, bottom-right corner
+  // Audio toggle buttons — top-right corner (avoids overlap with leaderboard/NAME btn)
   {
     const btnSize = Math.round(32 * ms);
     const gap = 6;
     const bx2 = WORLD_W - btnSize - 14;
     const bx1 = bx2 - btnSize - gap;
-    const by = WORLD_H - btnSize - 14;
+    const by = 14;
 
     function _drawAudioBtn(bx, by, active, label) {
       ctx.save();
