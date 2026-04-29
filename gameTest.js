@@ -2401,8 +2401,20 @@ Boss erscheint.`,
 
     for (let i = lootboxes.length - 1; i >= 0; i--) {
       const b = lootboxes[i];
-      const swayMul = b.golden ? 3.2 : 2;
-      const sway = Math.sin(lootSwayTimer * swayMul + b.swayPhase) * b.swayAmp;
+      let sway;
+      if (b.golden) {
+        // Z-pattern: top plateau → diagonal down → bottom plateau → diagonal up → repeat
+        const zPeriod = 2.0;
+        const p = (((lootSwayTimer + b.swayPhase) / zPeriod) % 1 + 1) % 1;
+        let zFactor;
+        if (p < 0.30)      zFactor = 1;                              // top
+        else if (p < 0.50) zFactor = 1 - (p - 0.30) * 10;            // diag down
+        else if (p < 0.80) zFactor = -1;                             // bottom
+        else               zFactor = -1 + (p - 0.80) * 10;           // diag up
+        sway = zFactor * b.swayAmp;
+      } else {
+        sway = Math.sin(lootSwayTimer * 2 + b.swayPhase) * b.swayAmp;
+      }
 
       if (player.magnetTimer > 0 && !b.collected) {
         const mdx = player.x - b.x;
