@@ -2332,7 +2332,7 @@ Boss erscheint.`,
         goldenAtTop,
         pipeOffsetX: offsetX,
         swayPhase: Math.random() * Math.PI * 2,
-        swayAmp: isGolden ? 220 : 26 + Math.random() * 18,
+        swayAmp: isGolden ? 150 : 26 + Math.random() * 18,
         size: Math.round(63 * SIZE_SCALE),
         collected: false,
         type,
@@ -2403,45 +2403,22 @@ Boss erscheint.`,
       const b = lootboxes[i];
       let sway;
       if (b.golden) {
-        // Z-pattern: top plateau → diagonal down → bottom plateau → diagonal up → repeat
-        const zPeriod = 2.0;
+        // Z-pattern with dominant diagonals (15% top / 35% diag-down / 15% bottom / 35% diag-up)
+        // — visible diagonal strokes, brief plateaus at extremes
+        const zPeriod = 2.6;
         const p = (((lootSwayTimer + b.swayPhase) / zPeriod) % 1 + 1) % 1;
         let zFactor;
-        if (p < 0.30)      zFactor = 1;                              // top
-        else if (p < 0.50) zFactor = 1 - (p - 0.30) * 10;            // diag down
-        else if (p < 0.80) zFactor = -1;                             // bottom
-        else               zFactor = -1 + (p - 0.80) * 10;           // diag up
+        if (p < 0.15)      zFactor = 1;
+        else if (p < 0.50) zFactor = 1 - (p - 0.15) * (2 / 0.35);
+        else if (p < 0.65) zFactor = -1;
+        else               zFactor = -1 + (p - 0.65) * (2 / 0.35);
         sway = zFactor * b.swayAmp;
       } else {
         sway = Math.sin(lootSwayTimer * 2 + b.swayPhase) * b.swayAmp;
       }
 
-      if (player.magnetTimer > 0 && !b.collected) {
-        const mdx = player.x - b.x;
-        const mdy = player.y - b.y;
-        const mdist = Math.sqrt(mdx * mdx + mdy * mdy);
-        const magnetRange = 280;
-        if (mdist < magnetRange && mdist > 1) {
-          // Detach from pipe the moment it enters range
-          if (b.pipe) { b.baseY = b.y; b.pipe = null; }
-          const pull = (1 - mdist / magnetRange) * 420 * dt;
-          b.x += (mdx / mdist) * pull;
-          b.y += (mdy / mdist) * pull;
-        } else {
-          // Outside range — keep moving normally
-          if (b.pipe) {
-            b.x = b.pipe.x + (b.pipeOffsetX !== undefined ? b.pipeOffsetX : pipeWidth / 2);
-            if (b.golden) {
-              b.y = b.baseY + sway;
-            } else {
-              b.y = b.pipe.gapY + pipeGap / 2 + sway;
-            }
-          } else {
-            b.x -= spd * dt;
-            b.y = b.baseY + sway;
-          }
-        }
-      } else if (b.pipe) {
+      // 1) Natural motion — always applied first, so the box never freezes
+      if (b.pipe) {
         b.x = b.pipe.x + (b.pipeOffsetX !== undefined ? b.pipeOffsetX : pipeWidth / 2);
         if (b.golden) {
           b.y = b.baseY + sway;
@@ -2451,6 +2428,22 @@ Boss erscheint.`,
       } else {
         b.x -= spd * dt;
         b.y = b.baseY + sway;
+      }
+
+      // 2) Magnet pull is additive — preserves natural scroll velocity at the edge
+      if (player.magnetTimer > 0 && !b.collected) {
+        const mdx = player.x - b.x;
+        const mdy = player.y - b.y;
+        const mdist = Math.sqrt(mdx * mdx + mdy * mdy);
+        const magnetRange = 280;
+        if (mdist < magnetRange && mdist > 1) {
+          const t = 1 - mdist / magnetRange;
+          const pull = t * 700 * dt;
+          b.x += (mdx / mdist) * pull;
+          b.y += (mdy / mdist) * pull;
+          // Detach once the pull is meaningful, so subsequent frames don't snap back to pipe Y
+          if (b.pipe && t > 0.3) { b.baseY = b.y; b.pipe = null; }
+        }
       }
 
       const dx = player.x - b.x;
