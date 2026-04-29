@@ -288,8 +288,12 @@ document.addEventListener("DOMContentLoaded", () => {
     gain.gain.exponentialRampToValueAtTime(Math.max(0.0001, g1), now + dur);
     osc.start(now); osc.stop(now + dur + 0.02);
   }
+  let _sfxJumpLastMs = 0;
   function sfxJump() {
     if (!audio.sfxEnabled) return;
+    const now = performance.now();
+    if (now - _sfxJumpLastMs < 80) return;
+    _sfxJumpLastMs = now;
     const ac = getAudioCtx(); if (!ac) return;
     _tone(260, 'square', 0.07, 0.1, 0.001);
     _tone(400, 'sine', 0.09, 0.07, 0.001, ac.currentTime + 0.035);
@@ -373,7 +377,17 @@ document.addEventListener("DOMContentLoaded", () => {
     function _startNew() {
       const el = new Audio(url);
       el.loop = true; el.volume = 0;
-      el.play().catch(() => {});
+      el.play().catch(() => {
+        // Track failed to load — fall back to first track in the list
+        const list = audio.tracks[key];
+        if (list && list.length && url !== list[0]) {
+          const fb = new Audio(list[0]);
+          fb.loop = true; fb.volume = 0;
+          fb.play().catch(() => {});
+          _musEl = fb;
+          if (_musIn) _musIn.el = fb;
+        }
+      });
       _musEl = el; _musKey = key;
       _musIn = { el, to: audio.musicVolume, dur: 0.4, elapsed: 0 };
     }
@@ -1633,6 +1647,7 @@ Boss erscheint.`,
     boss4Spawned = boss4Defeated = false;
     boss5Spawned = boss5Defeated = false;
     boss6Spawned = boss6Defeated = false;
+    audio._mainThemeIdx = 0;
     totalFlaps = 0;
     lastScoreHueStep = 0;
     scoreTauntText = "";
@@ -2286,8 +2301,9 @@ Boss erscheint.`,
       let centerY, type, goldenAtTop;
       if (isGolden) {
         goldenAtTop = Math.random() < 0.5;
-        // Center exactly at the gap edge — box hangs half into the gap, player must skim the pipe
-        centerY = goldenAtTop ? pipe.gapY : pipe.gapY + pipeGap;
+        // Center half-a-box inside the gap so box is fully visible but flush against the pipe wall
+        const _ghalf = Math.round(63 * SIZE_SCALE) / 2;
+        centerY = goldenAtTop ? pipe.gapY + _ghalf : pipe.gapY + pipeGap - _ghalf;
         type = Math.random() < 0.55 ? "double" : "shield";
       } else {
         centerY = pipe.gapY + pipeGap / 2;
@@ -2386,9 +2402,12 @@ Boss erscheint.`,
           // Outside range — keep moving normally
           if (b.pipe) {
             b.x = b.pipe.x + pipeWidth / 2;
-            b.y = b.golden
-              ? (b.goldenAtTop ? b.pipe.gapY : b.pipe.gapY + pipeGap)
-              : b.pipe.gapY + pipeGap / 2 + sway;
+            if (b.golden) {
+              const _bh = b.size / 2;
+              b.y = b.goldenAtTop ? b.pipe.gapY + _bh : b.pipe.gapY + pipeGap - _bh;
+            } else {
+              b.y = b.pipe.gapY + pipeGap / 2 + sway;
+            }
           } else {
             b.x -= spd * dt;
             b.y = b.baseY + sway;
@@ -2397,7 +2416,8 @@ Boss erscheint.`,
       } else if (b.pipe) {
         b.x = b.pipe.x + pipeWidth / 2;
         if (b.golden) {
-          b.y = b.goldenAtTop ? b.pipe.gapY : b.pipe.gapY + pipeGap;
+          const _bh = b.size / 2;
+          b.y = b.goldenAtTop ? b.pipe.gapY + _bh : b.pipe.gapY + pipeGap - _bh;
         } else {
           b.y = b.pipe.gapY + pipeGap / 2 + sway;
         }
@@ -2430,7 +2450,8 @@ Boss erscheint.`,
         continue;
       }
 
-      if (b.x < -120) {
+      // Cull: off left edge OR pipe scrolled off and was removed (b.pipe no longer moving)
+      if (b.x < -120 || (b.pipe && b.pipe.x + pipeWidth < -80)) {
         lootboxes.splice(i, 1);
       }
     }
@@ -4657,25 +4678,31 @@ function drawUI() {
     : WORLD_H;
   ctx.textAlign = "left";
   ctx.textBaseline = "top";
+  // Dynamic line positions so nothing overlaps regardless of name length or ms scale
+  const _hudNameSize = Math.round(14 * ms);
+  const _hudScoreSize = Math.round(18 * ms);
+  const _hudNameY = 14;
+  const _hudScoreY = _hudNameY + _hudNameSize + Math.round(10 * ms);
+  const _hudHsY = _hudScoreY + Math.round(_hudScoreSize * 1.25) + Math.round(8 * ms);
   ctx.fillStyle = "#8fd3ff";
-  ctx.font = `600 ${Math.round(14 * ms)}px ${SECONDARY_FONT}`;
-  ctx.fillText(`Spieler: ${playerName || "---"}`, 16, 20);
+  ctx.font = `600 ${_hudNameSize}px ${SECONDARY_FONT}`;
+  ctx.fillText(`Spieler: ${playerName || "---"}`, 16, _hudNameY);
 
   // Score with flash animation
   if (score !== lastDrawnScore) { scoreFlashTimer = 0.35; lastDrawnScore = score; }
   const scoreScale = 1 + (scoreFlashTimer > 0 ? 0.22 * (scoreFlashTimer / 0.35) : 0);
   ctx.save();
-  ctx.translate(16, Math.round(52 * ms));
+  ctx.translate(16, _hudScoreY);
   ctx.scale(scoreScale, scoreScale);
-  ctx.font = `400 ${Math.round(18 * ms)}px ${PRIMARY_FONT}`;
+  ctx.font = `400 ${_hudScoreSize}px ${PRIMARY_FONT}`;
   ctx.fillStyle = scoreFlashTimer > 0 ? "#ffe066" : "#fff";
   if (scoreFlashTimer > 0 && !perfMode) { ctx.shadowColor = "#ffe066"; ctx.shadowBlur = 14; }
   ctx.fillText(`Punkte: ${score}`, 0, 0);
   ctx.restore();
 
-  ctx.font = `600 ${Math.round(14 * ms)}px ${SECONDARY_FONT}`;
+  ctx.font = `600 ${_hudNameSize}px ${SECONDARY_FONT}`;
   ctx.fillStyle = "#9ec9ff";
-  ctx.fillText(`Highscore: ${highscore}`, 16, Math.round(82 * ms));
+  ctx.fillText(`Highscore: ${highscore}`, 16, _hudHsY);
 
   if (inBossFight && currentBoss && currentBoss.id === 4 && currentBoss.phase === 2) {
     const secs = Math.max(0, Math.ceil(currentBoss.cutoverTimer));
