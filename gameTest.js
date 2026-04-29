@@ -2020,7 +2020,7 @@ Boss erscheint.`,
   //  Powerups
   // ======================================================
   function randomPowerup(phaseIndex = getPhaseIndex()) {
-    const base = ["ghost", "shrink", "double", "big", "shield", "magnet", "regen", "scoreRush", "multiShot"];
+    const base = ["ghost", "shrink", "double", "big", "shield", "magnet", "regen", "scoreRush"];
     if (phaseIndex >= 4) {
       base.push("shield", "double", "shield", "scoreRush");
     } else if (phaseIndex >= 2) {
@@ -2377,10 +2377,22 @@ Boss erscheint.`,
         const mdist = Math.sqrt(mdx * mdx + mdy * mdy);
         const magnetRange = 280;
         if (mdist < magnetRange && mdist > 1) {
+          // Detach from pipe the moment it enters range
+          if (b.pipe) { b.baseY = b.y; b.pipe = null; }
           const pull = (1 - mdist / magnetRange) * 420 * dt;
           b.x += (mdx / mdist) * pull;
           b.y += (mdy / mdist) * pull;
-          b.pipe = null;
+        } else {
+          // Outside range — keep moving normally
+          if (b.pipe) {
+            b.x = b.pipe.x + pipeWidth / 2;
+            b.y = b.golden
+              ? (b.goldenAtTop ? b.pipe.gapY : b.pipe.gapY + pipeGap)
+              : b.pipe.gapY + pipeGap / 2 + sway;
+          } else {
+            b.x -= spd * dt;
+            b.y = b.baseY + sway;
+          }
         }
       } else if (b.pipe) {
         b.x = b.pipe.x + pipeWidth / 2;
@@ -5231,7 +5243,6 @@ function drawUI() {
         { color: "#ff8899", label: "Groß",          desc: "Werde riesig",             star: false },
         { color: "#ff88dd", label: "Magnet",        desc: "Lootboxen anziehen",       star: false },
         { color: "#ffcc00", label: "Score-Rush",    desc: "+1 Extra-Punkt pro Säule", star: false },
-        { color: "#aaddff", label: "Multi-Shot",    desc: "3 Schüsse gleichzeitig",   star: false },
         { color: "#ffd700", label: "★ Goldene Box", desc: "Risiko = mehr Belohnung!", star: true  },
       ];
       const cycleDur = 2.5;
