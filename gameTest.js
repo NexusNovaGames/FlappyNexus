@@ -1024,12 +1024,12 @@ const assets = {
 
   // Boss Triggers
   const BOSS_INTERVAL = 5; // Prüfintervall
-  const BOSS1_SCORE = 30; // Boss 1 bei 30 Punkten
-  const BOSS2_SCORE = 50; // Boss 2 bei 50 Punkten
-  const BOSS3_SCORE = 90; // Boss 3 bei 90 Punkten
-  const BOSS4_SCORE = 130; // Boss 4 bei 130 Punkten
-  const BOSS5_SCORE = 180; // Boss 5 bei 180 Punkten
-  const BOSS6_SCORE = 230; // Boss 6 bei 230 Punkten
+  const BOSS1_SCORE = 20;  // Boss 1 bei 20 Punkten
+  const BOSS2_SCORE = 50;  // Boss 2 bei 50 Punkten
+  const BOSS3_SCORE = 120; // Boss 3 bei 120 Punkten (mehr Abstand)
+  const BOSS4_SCORE = 175; // Boss 4 bei 175 Punkten (mehr Abstand)
+  const BOSS5_SCORE = 225; // Boss 5 bei 225 Punkten
+  const BOSS6_SCORE = 275; // Boss 6 bei 275 Punkten
   const SCORE_TAUNT_DURATION = 4;
   const SCORE_TAUNT_MIN = 1;
   const SCORE_TAUNT_MAX = 9999;
@@ -2007,11 +2007,11 @@ Boss erscheint.`,
   //  Powerups
   // ======================================================
   function randomPowerup(phaseIndex = getPhaseIndex()) {
-    const base = ["ghost", "shrink", "slow", "double", "big", "shield", "turbo"];
+    const base = ["ghost", "shrink", "double", "big", "shield"];
     if (phaseIndex >= 4) {
-      base.push("shield", "turbo", "double");
+      base.push("shield", "double", "shield");
     } else if (phaseIndex >= 2) {
-      base.push("shield", "turbo");
+      base.push("shield", "ghost");
     }
     return base[Math.floor(Math.random() * base.length)];
   }
@@ -2240,18 +2240,28 @@ Boss erscheint.`,
 
   function spawnLootbox(pipe) {
     if (Math.random() < lootSpawnChance) {
-      const centerY = pipe.gapY + pipeGap / 2;
-      const type = randomPowerup(getPhaseIndex());
+      // 25% chance for a golden risky box at the gap edge (only if gap is wide enough)
+      const isGolden = Math.random() < 0.25 && pipeGap > 110;
+      let centerY, type;
+      if (isGolden) {
+        const atTop = Math.random() < 0.5;
+        centerY = atTop ? pipe.gapY + 22 : pipe.gapY + pipeGap - 22;
+        type = Math.random() < 0.55 ? "double" : "shield";
+      } else {
+        centerY = pipe.gapY + pipeGap / 2;
+        type = randomPowerup(getPhaseIndex());
+      }
       if (type === "ghost") ghostChallenge = true;
       lootboxes.push({
         x: pipe.x + pipeWidth / 2,
         y: centerY,
         baseY: centerY,
         swayPhase: Math.random() * Math.PI * 2,
-        swayAmp: 26 + Math.random() * 18,
+        swayAmp: isGolden ? 10 : 26 + Math.random() * 18,
         size: Math.round(63 * SIZE_SCALE),
         collected: false,
         type,
+        golden: isGolden,
         img: assets.lootbox,
         pipe,
       });
@@ -4102,12 +4112,12 @@ Boss erscheint.`,
       ctx.fillRect(p.x, bottomY, pipeWidth, bottomH);
 
       ctx.strokeStyle = "#4fd2ff";
-      ctx.shadowColor = "#4fd2ff";
-      ctx.shadowBlur = 12;
+      if (!perfMode) { ctx.shadowColor = "#4fd2ff"; ctx.shadowBlur = 12; }
       ctx.lineWidth = 3;
 
       ctx.strokeRect(p.x, 0, pipeWidth, p.gapY);
       ctx.strokeRect(p.x, bottomY, pipeWidth, bottomH);
+      ctx.shadowBlur = 0;
     }
     ctx.restore();
   }
@@ -4118,8 +4128,7 @@ Boss erscheint.`,
     ctx.fillStyle = "#0d1a2f";
     ctx.strokeStyle = "#ff6fbf";
     ctx.lineWidth = 3;
-    ctx.shadowColor = "#ff6fbf";
-    ctx.shadowBlur = 12;
+    if (!perfMode) { ctx.shadowColor = "#ff6fbf"; ctx.shadowBlur = 12; }
     for (const o of bossObstacles) {
       const gap = Number.isFinite(o.gap) ? o.gap : pipeGap;
       const bottomY = Math.floor(o.gapY + gap);
@@ -4134,12 +4143,30 @@ Boss erscheint.`,
 
   function drawLootboxes() {
     for (const b of lootboxes) {
+      ctx.save();
+      const pulse = b.golden ? 0.65 + 0.35 * Math.sin(globalTime * 3.5 + b.swayPhase) : 1;
+      if (b.golden && !perfMode) {
+        ctx.shadowColor = `rgba(255,210,50,${pulse * 0.9})`;
+        ctx.shadowBlur = 18;
+      }
       if (b.img && b.img.complete) {
         ctx.drawImage(b.img, b.x - b.size / 2, b.y - b.size / 2, b.size, b.size);
       } else {
         ctx.fillStyle = "#ffc400";
         ctx.fillRect(b.x - b.size / 2, b.y - b.size / 2, b.size, b.size);
       }
+      if (b.golden) {
+        // golden tint overlay
+        ctx.globalAlpha = 0.28 * pulse;
+        ctx.fillStyle = "#ffdd44";
+        ctx.fillRect(b.x - b.size / 2, b.y - b.size / 2, b.size, b.size);
+        // border glow
+        ctx.globalAlpha = 0.7 * pulse;
+        ctx.strokeStyle = "#ffd700";
+        ctx.lineWidth = 2.5;
+        ctx.strokeRect(b.x - b.size / 2, b.y - b.size / 2, b.size, b.size);
+      }
+      ctx.restore();
     }
   }
 
@@ -4448,7 +4475,7 @@ Boss erscheint.`,
       ctx.shadowBlur = 22;
     }
 
-    ctx.filter = `hue-rotate(${player.colorShift}deg)`;
+    if (player.colorShift !== 0) ctx.filter = `hue-rotate(${player.colorShift}deg)`;
 
     if (img.complete && img.naturalWidth) {
       const aspect = img.width / img.height;
@@ -4472,7 +4499,7 @@ Boss erscheint.`,
     if (playerHitFlash > 0) {
       ctx.save();
       ctx.globalAlpha = (playerHitFlash / 5) * 0.65;
-      ctx.globalCompositeOperation = 'lighter';
+      if (!perfMode) ctx.globalCompositeOperation = 'lighter';
       ctx.fillStyle = '#ff5555';
       ctx.beginPath();
       ctx.arc(0, 0, r * 2.2, 0, Math.PI * 2);
@@ -4486,8 +4513,7 @@ Boss erscheint.`,
       ctx.save();
       ctx.strokeStyle = `rgba(120,200,255,${shieldPulse})`;
       ctx.lineWidth = 3;
-      ctx.shadowColor = 'rgba(80,180,255,0.8)';
-      ctx.shadowBlur = 8;
+      if (!perfMode) { ctx.shadowColor = 'rgba(80,180,255,0.8)'; ctx.shadowBlur = 8; }
       ctx.beginPath();
       ctx.arc(0, 0, r + 10, shieldAngle, shieldAngle + Math.PI * 1.6);
       ctx.stroke();
@@ -4738,7 +4764,7 @@ function drawUI() {
     const isFull = i < fullHearts;
     const isHalf = !isFull && (i === fullHearts) && halfHeart;
     if (isFull) {
-      if (hpRatio < 0.25) { ctx.shadowColor = "#ff5555"; ctx.shadowBlur = 8 * hpLowPulse; }
+      if (hpRatio < 0.25 && !perfMode) { ctx.shadowColor = "#ff5555"; ctx.shadowBlur = 8 * hpLowPulse; }
       ctx.fillStyle = heartColor;
     } else if (isHalf) {
       ctx.shadowBlur = 0;
@@ -5130,7 +5156,7 @@ function drawUI() {
     }
 
     // ── 3b. Middle column: powerup info panel ────────────────────────────
-    const infoPanelX = 548, infoPanelY = 90, infoPanelW = 268, infoPanelH = 420;
+    const infoPanelX = 572, infoPanelY = 90, infoPanelW = 262, infoPanelH = 420;
     const infoFade = Math.max(0, Math.min(1, (introAnimTimer - 0.4) / 0.5));
     if (infoFade > 0) {
       ctx.save();
@@ -5138,106 +5164,147 @@ function drawUI() {
       ctx.translate(infoPanelX, infoPanelY);
 
       // Panel background
-      ctx.fillStyle = "rgba(4,10,26,0.92)";
-      ctx.strokeStyle = "rgba(79,210,255,0.35)";
+      ctx.fillStyle = "rgba(4,10,26,0.93)";
+      ctx.strokeStyle = "rgba(79,210,255,0.3)";
       ctx.lineWidth = 1.5;
       ctx.fillRect(0, 0, infoPanelW, infoPanelH);
       ctx.strokeRect(0, 0, infoPanelW, infoPanelH);
 
-      // Cyan top accent
-      const infAccGrad = ctx.createLinearGradient(0, 0, infoPanelW, 0);
-      infAccGrad.addColorStop(0, "rgba(79,210,255,0.0)");
-      infAccGrad.addColorStop(0.5, "rgba(79,210,255,0.6)");
-      infAccGrad.addColorStop(1, "rgba(79,210,255,0.0)");
-      ctx.fillStyle = infAccGrad;
+      // Top accent gradient
+      const iag = ctx.createLinearGradient(0, 0, infoPanelW, 0);
+      iag.addColorStop(0, "rgba(79,210,255,0.0)");
+      iag.addColorStop(0.5, "rgba(79,210,255,0.7)");
+      iag.addColorStop(1, "rgba(79,210,255,0.0)");
+      ctx.fillStyle = iag;
       ctx.fillRect(0, 0, infoPanelW, 2);
 
-      // Lootbox image thumbnail
-      const lbImgSize = 36;
-      const lbImgX = infoPanelW / 2 - lbImgSize / 2;
-      const lbImgY = 12;
+      // Lootbox image with golden glow
       if (assets.lootbox && assets.lootbox.complete) {
+        const liSz = 46, liX = infoPanelW / 2 - liSz / 2, liY = 11;
         ctx.save();
-        ctx.beginPath();
-        ctx.roundRect(lbImgX, lbImgY, lbImgSize, lbImgSize, 6);
-        ctx.clip();
-        ctx.drawImage(assets.lootbox, lbImgX, lbImgY, lbImgSize, lbImgSize);
+        if (!perfMode) {
+          const lg = 0.5 + 0.3 * Math.sin(globalTime * 2.2);
+          ctx.shadowColor = `rgba(255,190,60,${lg})`;
+          ctx.shadowBlur = 16;
+        }
+        ctx.drawImage(assets.lootbox, liX, liY, liSz, liSz);
         ctx.restore();
-        ctx.strokeStyle = "rgba(79,210,255,0.4)";
-        ctx.lineWidth = 1;
-        ctx.strokeRect(lbImgX, lbImgY, lbImgSize, lbImgSize);
+        ctx.strokeStyle = "rgba(255,200,80,0.55)";
+        ctx.lineWidth = 1.5;
+        ctx.strokeRect(liX, liY, liSz, liSz);
       }
 
-      // Title
+      // POWERUPS heading
       ctx.textAlign = "center";
       ctx.textBaseline = "middle";
-      ctx.font = `400 11px ${PRIMARY_FONT}`;
-      ctx.fillStyle = "#dff6ff";
-      ctx.shadowColor = "rgba(79,210,255,0.5)";
-      ctx.shadowBlur = 8;
-      ctx.fillText("POWERUPS", infoPanelW / 2, 62);
+      ctx.font = `400 10px ${PRIMARY_FONT}`;
+      ctx.fillStyle = "#e0f4ff";
+      if (!perfMode) { ctx.shadowColor = "rgba(79,210,255,0.6)"; ctx.shadowBlur = 10; }
+      ctx.fillText("POWERUPS", infoPanelW / 2, 66);
       ctx.shadowBlur = 0;
 
       // Divider
-      ctx.strokeStyle = "rgba(79,160,255,0.2)";
+      ctx.strokeStyle = "rgba(79,160,255,0.22)";
       ctx.lineWidth = 1;
       ctx.beginPath();
-      ctx.moveTo(16, 76);
-      ctx.lineTo(infoPanelW - 16, 76);
+      ctx.moveTo(14, 77);
+      ctx.lineTo(infoPanelW - 14, 77);
       ctx.stroke();
 
-      // Effect entries
+      // Effect rows — staggered fade-in
       const infoEffects = [
-        { color: "#88ccff", label: "Geist",           desc: "Fliege durch Hindernisse" },
-        { color: "#5cc8ff", label: "Schild",          desc: "Nächsten Treffer blocken" },
-        { color: "#ffe066", label: "2× Punkte",       desc: "Doppelter Score" },
-        { color: "#9cff9c", label: "Zeitlupe",        desc: "Welt verlangsamt sich" },
-        { color: "#ffb366", label: "Turbo",           desc: "Mehr Speed & Sprung" },
-        { color: "#8df0c3", label: "Schrumpfen",      desc: "Kleiner = weniger Treffer" },
-        { color: "#ff8899", label: "Groß",            desc: "Werde größer" },
+        { color: "#88ccff", rgb: "136,204,255", label: "Geist",      desc: "Hindernisse passieren" },
+        { color: "#5cc8ff", rgb: "92,200,255",  label: "Schild",     desc: "Nächsten Treffer blocken" },
+        { color: "#ffe066", rgb: "255,224,102", label: "2× Punkte",  desc: "Doppelter Score" },
+        { color: "#8df0c3", rgb: "141,240,195", label: "Schrumpfen", desc: "Kleiner = weniger Treffer" },
+        { color: "#ff8899", rgb: "255,136,153", label: "Groß",       desc: "Werde größer" },
       ];
-      const rowH = 40;
-      const rowStartY = 84;
-      infoEffects.forEach((eff, i) => {
+      // Golden box hint row
+      const goldenHint = { color: "#ffd700", rgb: "255,215,0", label: "Goldene Box", desc: "Risiko = mehr Belohnung!" };
+      const allRows = [...infoEffects, goldenHint];
+      const rowH = 36, rowStartY = 82;
+
+      allRows.forEach((eff, i) => {
+        const rowFade = Math.max(0, Math.min(1, (introAnimTimer - 0.45 - i * 0.07) / 0.25));
+        if (rowFade <= 0) return;
         const ry = rowStartY + i * rowH;
-        const rm = ry + rowH / 2;
-        // Row hover bg
-        ctx.fillStyle = "rgba(255,255,255,0.018)";
-        ctx.fillRect(8, ry + 2, infoPanelW - 16, rowH - 3);
-        // Color dot
+        const isGoldenRow = (i === allRows.length - 1);
+
+        ctx.globalAlpha = infoFade * rowFade;
+
+        // Tinted row background
+        ctx.fillStyle = `rgba(${eff.rgb},0.07)`;
+        ctx.fillRect(0, ry, infoPanelW, rowH - 1);
+
+        // Left color accent bar
+        ctx.globalAlpha = infoFade * rowFade * 0.9;
         ctx.fillStyle = eff.color;
-        ctx.beginPath();
-        ctx.arc(26, rm, 5, 0, Math.PI * 2);
-        ctx.fill();
-        // Label
+        ctx.fillRect(0, ry, 3, rowH - 1);
+        ctx.globalAlpha = infoFade * rowFade;
+
+        // Dot (star icon for golden row)
+        ctx.fillStyle = eff.color;
+        if (isGoldenRow) {
+          ctx.textAlign = "center";
+          ctx.textBaseline = "middle";
+          ctx.font = `600 13px ${SECONDARY_FONT}`;
+          ctx.fillText("★", 21, ry + rowH / 2);
+        } else {
+          ctx.beginPath();
+          ctx.arc(21, ry + rowH / 2, 5, 0, Math.PI * 2);
+          ctx.fill();
+        }
+
+        // Label — bold, colored
         ctx.textAlign = "left";
         ctx.textBaseline = "top";
-        ctx.font = `600 11px ${SECONDARY_FONT}`;
+        ctx.font = `700 12px ${SECONDARY_FONT}`;
         ctx.fillStyle = eff.color;
-        ctx.fillText(eff.label, 40, ry + 8);
-        // Description
-        ctx.font = `400 10px ${SECONDARY_FONT}`;
-        ctx.fillStyle = "rgba(180,210,230,0.65)";
-        ctx.fillText(eff.desc, 40, ry + 22);
-      });
+        ctx.fillText(eff.label, 34, ry + 6);
 
-      // Divider before hint
-      const hintDivY = rowStartY + infoEffects.length * rowH + 4;
-      ctx.strokeStyle = "rgba(79,160,255,0.2)";
+        // Description — small, muted
+        ctx.font = `400 10px ${SECONDARY_FONT}`;
+        ctx.fillStyle = "rgba(175,215,235,0.65)";
+        ctx.fillText(eff.desc, 34, ry + 20);
+      });
+      ctx.globalAlpha = infoFade;
+
+      // Bottom divider
+      const bDivY = rowStartY + allRows.length * rowH + 6;
+      ctx.strokeStyle = "rgba(79,160,255,0.22)";
       ctx.lineWidth = 1;
       ctx.beginPath();
-      ctx.moveTo(16, hintDivY);
-      ctx.lineTo(infoPanelW - 16, hintDivY);
+      ctx.moveTo(14, bDivY);
+      ctx.lineTo(infoPanelW - 14, bDivY);
       ctx.stroke();
 
-      // Pause hint
-      const hintY = hintDivY + 14;
-      const hintPulse = 0.55 + 0.45 * Math.sin(globalTime * 1.4);
+      // [P] Pause — styled keyboard key
+      const hintCY = bDivY + (infoPanelH - bDivY) / 2;
+      const keyW = 22, keyH = 20;
+      const hintPulse = 0.6 + 0.4 * Math.sin(globalTime * 1.5);
+      const keyX = Math.round(infoPanelW / 2 - (keyW + 52) / 2);
+      const keyY = Math.round(hintCY - keyH / 2);
+      // Key box
+      ctx.fillStyle = "rgba(20,50,90,0.85)";
+      ctx.strokeStyle = `rgba(120,190,240,${0.5 + 0.3 * hintPulse})`;
+      ctx.lineWidth = 1.5;
+      ctx.fillRect(keyX, keyY, keyW, keyH);
+      ctx.strokeRect(keyX, keyY, keyW, keyH);
+      // Inner top highlight
+      ctx.fillStyle = "rgba(160,220,255,0.12)";
+      ctx.fillRect(keyX + 2, keyY + 2, keyW - 4, 5);
+      // Key letter
       ctx.textAlign = "center";
       ctx.textBaseline = "middle";
-      ctx.font = `600 11px ${SECONDARY_FONT}`;
-      ctx.fillStyle = `rgba(160,210,240,${0.6 + 0.3 * hintPulse})`;
-      ctx.fillText("[ P ]  Pause", infoPanelW / 2, hintY);
+      ctx.font = `700 11px ${SECONDARY_FONT}`;
+      ctx.fillStyle = `rgba(200,235,255,${0.8 + 0.2 * hintPulse})`;
+      ctx.fillText("P", keyX + keyW / 2, keyY + keyH / 2 + 0.5);
+      // Pause label
+      ctx.textAlign = "left";
+      ctx.textBaseline = "middle";
+      ctx.font = `400 12px ${SECONDARY_FONT}`;
+      ctx.fillStyle = `rgba(160,210,240,${0.65 + 0.25 * hintPulse})`;
+      ctx.fillText("Pause", keyX + keyW + 8, hintCY);
 
       ctx.restore();
     }
