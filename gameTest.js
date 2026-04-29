@@ -2047,9 +2047,10 @@ Boss erscheint.`,
   //  Powerups
   // ======================================================
   function randomPowerup(phaseIndex = getPhaseIndex()) {
-    const base = ["ghost", "shrink", "double", "big", "shield", "magnet", "regen", "scoreRush"];
+    // scoreRush is reserved for golden boxes only
+    const base = ["ghost", "shrink", "double", "big", "shield", "magnet", "regen"];
     if (phaseIndex >= 4) {
-      base.push("shield", "double", "shield", "scoreRush");
+      base.push("shield", "double", "shield");
     } else if (phaseIndex >= 2) {
       base.push("shield", "ghost", "magnet");
     }
@@ -2313,14 +2314,11 @@ Boss erscheint.`,
       const isGolden = Math.random() < 0.25;
       let centerY, type, goldenAtTop, offsetX;
       if (isGolden) {
-        goldenAtTop = Math.random() < 0.5;
-        // Y in upper or lower portion of the safe area — away from gap path
-        centerY = goldenAtTop
-          ? 60 + Math.random() * 70
-          : WORLD_H - 60 - Math.random() * 70;
-        // X halfway to the next pipe — in the open horizontal corridor between pairs
+        goldenAtTop = false;
+        // Patrols vertically between the pipes (full safe-area range, fast oscillation)
+        centerY = WORLD_H / 2;
         offsetX = pipeSpawnInterval * pipeSpeed * 0.5;
-        type = Math.random() < 0.7 ? "scoreRush" : "shield";
+        type = "scoreRush";
       } else {
         centerY = pipe.gapY + pipeGap / 2;
         offsetX = pipeWidth / 2;
@@ -2334,7 +2332,7 @@ Boss erscheint.`,
         goldenAtTop,
         pipeOffsetX: offsetX,
         swayPhase: Math.random() * Math.PI * 2,
-        swayAmp: isGolden ? 22 : 26 + Math.random() * 18,
+        swayAmp: isGolden ? 220 : 26 + Math.random() * 18,
         size: Math.round(63 * SIZE_SCALE),
         collected: false,
         type,
@@ -2403,7 +2401,8 @@ Boss erscheint.`,
 
     for (let i = lootboxes.length - 1; i >= 0; i--) {
       const b = lootboxes[i];
-      const sway = Math.sin(lootSwayTimer * 2 + b.swayPhase) * b.swayAmp;
+      const swayMul = b.golden ? 3.2 : 2;
+      const sway = Math.sin(lootSwayTimer * swayMul + b.swayPhase) * b.swayAmp;
 
       if (player.magnetTimer > 0 && !b.collected) {
         const mdx = player.x - b.x;
