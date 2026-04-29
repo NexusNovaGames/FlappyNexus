@@ -730,8 +730,7 @@ document.addEventListener("DOMContentLoaded", () => {
       ctx.stroke();
 
       ctx.strokeStyle = eff.color;
-      ctx.shadowColor = eff.color;
-      ctx.shadowBlur = 6;
+      if (!perfMode) { ctx.shadowColor = eff.color; ctx.shadowBlur = 6; }
       ctx.beginPath();
       ctx.arc(0, 0, r, -Math.PI / 2, -Math.PI / 2 + Math.PI * 2 * ratio);
       ctx.stroke();
@@ -912,6 +911,7 @@ const assets = {
   let totalFlaps = 0;
   let lastScoreHueStep = 0;
   let bossCountdown = 0;
+  let bossSpawnGraceTimer = 0;
   let bossTransitionActive = false;
   let bossTransitionTimer = 0;
   const bossTransitionDuration = 1.2;
@@ -1420,7 +1420,7 @@ Boss erscheint.`,
       if (e.code === "Space") { e.preventDefault(); return; } // don't flap while typing
     }
     if (e.code === "Space" || e.code === "ArrowUp") {
-    if (pendingBossId) {
+    if (pendingBossId && !bossTransitionActive) {
       if (bossAwaitingConfirm) {
         bossTransitionActive = true;
         bossTransitionTimer = 0;
@@ -1457,7 +1457,7 @@ Boss erscheint.`,
     const p = getWorldPoint(event);
     if (!p || !p.inWorld) return;
 
-    if (pendingBossId) {
+    if (pendingBossId && !bossTransitionActive) {
       if (bossAwaitingConfirm) {
         bossTransitionActive = true;
         bossTransitionTimer = 0;
@@ -1563,6 +1563,7 @@ Boss erscheint.`,
     bossAwaitingConfirm = false;
     bossTransitionActive = false;
     bossTransitionTimer = 0;
+    bossSpawnGraceTimer = 0;
     phaseMilestoneCooldown = 0;
     nnTauntActive = false;
     nnTauntText = "";
@@ -1653,6 +1654,7 @@ Boss erscheint.`,
     bossCountdown = 0;
     bossTransitionActive = false;
     bossTransitionTimer = 0;
+    bossSpawnGraceTimer = 0;
     bossShots.length = 0;
     playerShots.length = 0;
     bossLoot.length = 0;
@@ -1826,7 +1828,7 @@ Boss erscheint.`,
 
   function updatePendingBossStory(dt) {
     if (!pendingBossId) return;
-    if (!bossAwaitingConfirm) {
+    if (!bossAwaitingConfirm && !bossTransitionActive) {
       pendingBossStoryRevealChars = Math.min(
         pendingBossStoryTotalChars,
         pendingBossStoryRevealChars + dt * pendingBossStoryCharRate
@@ -2642,6 +2644,7 @@ Boss erscheint.`,
       radius: player.baseRadius,
       hp: player.maxHp,
     });
+    bossSpawnGraceTimer = 1.5;
   }
 
   function defeatBoss(id) {
@@ -3803,12 +3806,17 @@ Boss erscheint.`,
     updatePhaseText(dt);
     updateNnTaunt(dt);
 
-    // Keine Gravitation während Boss-Vorbereitung
+    // Keine Gravitation während Boss-Vorbereitung oder Grace-Period nach Spawn
     if (!pendingBossId) {
-      const slowFallScale = player.slowTimer > 0 ? 0.8 : 1.0;
-      const grav = (player.turboTimer > 0 ? player.gravity * 0.85 : player.gravity) * slowFallScale;
-      player.vy += grav * dt;
-      player.y += player.vy * dt;
+      if (bossSpawnGraceTimer > 0) {
+        bossSpawnGraceTimer -= dt;
+        player.vy = 0;
+      } else {
+        const slowFallScale = player.slowTimer > 0 ? 0.8 : 1.0;
+        const grav = (player.turboTimer > 0 ? player.gravity * 0.85 : player.gravity) * slowFallScale;
+        player.vy += grav * dt;
+        player.y += player.vy * dt;
+      }
     } else {
       player.vy = 0;
       updatePendingBossStory(dt);
@@ -3912,15 +3920,15 @@ Boss erscheint.`,
 
   function _drawToastBadge(text, bx, by) {
     ctx.save();
-    ctx.font = `600 13px ${SECONDARY_FONT}`;
+    ctx.font = `600 14px ${SECONDARY_FONT}`;
     ctx.textBaseline = "middle";
     const metrics = ctx.measureText(text);
     const textW = metrics.width;
-    const padX = 14;
+    const padX = 16;
     const padY = 0;
-    const boxH = 30;
+    const boxH = 32;
     const accentW = 4;
-    const boxW = accentW + padX + textW + padX;
+    const boxW = accentW + padX + textW + padX + 14; // +14 safety for web-font variance
     const boxX = bx;
     const boxY = by - boxH / 2;
 
@@ -5117,6 +5125,119 @@ function drawUI() {
       ctx.fillStyle = "#c8e8ff";
       ctx.fillText("NAME ANPASSEN", lbBtnX + lbBtnW / 2, lbBtnY + lbBtnH / 2);
       nameButtonCandidate = { x: lbX + lbBtnX, y: lbY + lbBtnY, w: lbBtnW, h: lbBtnH };
+
+      ctx.restore();
+    }
+
+    // ── 3b. Middle column: powerup info panel ────────────────────────────
+    const infoPanelX = 548, infoPanelY = 90, infoPanelW = 268, infoPanelH = 420;
+    const infoFade = Math.max(0, Math.min(1, (introAnimTimer - 0.4) / 0.5));
+    if (infoFade > 0) {
+      ctx.save();
+      ctx.globalAlpha = infoFade;
+      ctx.translate(infoPanelX, infoPanelY);
+
+      // Panel background
+      ctx.fillStyle = "rgba(4,10,26,0.92)";
+      ctx.strokeStyle = "rgba(79,210,255,0.35)";
+      ctx.lineWidth = 1.5;
+      ctx.fillRect(0, 0, infoPanelW, infoPanelH);
+      ctx.strokeRect(0, 0, infoPanelW, infoPanelH);
+
+      // Cyan top accent
+      const infAccGrad = ctx.createLinearGradient(0, 0, infoPanelW, 0);
+      infAccGrad.addColorStop(0, "rgba(79,210,255,0.0)");
+      infAccGrad.addColorStop(0.5, "rgba(79,210,255,0.6)");
+      infAccGrad.addColorStop(1, "rgba(79,210,255,0.0)");
+      ctx.fillStyle = infAccGrad;
+      ctx.fillRect(0, 0, infoPanelW, 2);
+
+      // Lootbox image thumbnail
+      const lbImgSize = 36;
+      const lbImgX = infoPanelW / 2 - lbImgSize / 2;
+      const lbImgY = 12;
+      if (assets.lootbox && assets.lootbox.complete) {
+        ctx.save();
+        ctx.beginPath();
+        ctx.roundRect(lbImgX, lbImgY, lbImgSize, lbImgSize, 6);
+        ctx.clip();
+        ctx.drawImage(assets.lootbox, lbImgX, lbImgY, lbImgSize, lbImgSize);
+        ctx.restore();
+        ctx.strokeStyle = "rgba(79,210,255,0.4)";
+        ctx.lineWidth = 1;
+        ctx.strokeRect(lbImgX, lbImgY, lbImgSize, lbImgSize);
+      }
+
+      // Title
+      ctx.textAlign = "center";
+      ctx.textBaseline = "middle";
+      ctx.font = `400 11px ${PRIMARY_FONT}`;
+      ctx.fillStyle = "#dff6ff";
+      ctx.shadowColor = "rgba(79,210,255,0.5)";
+      ctx.shadowBlur = 8;
+      ctx.fillText("POWERUPS", infoPanelW / 2, 62);
+      ctx.shadowBlur = 0;
+
+      // Divider
+      ctx.strokeStyle = "rgba(79,160,255,0.2)";
+      ctx.lineWidth = 1;
+      ctx.beginPath();
+      ctx.moveTo(16, 76);
+      ctx.lineTo(infoPanelW - 16, 76);
+      ctx.stroke();
+
+      // Effect entries
+      const infoEffects = [
+        { color: "#88ccff", label: "Geist",           desc: "Fliege durch Hindernisse" },
+        { color: "#5cc8ff", label: "Schild",          desc: "Nächsten Treffer blocken" },
+        { color: "#ffe066", label: "2× Punkte",       desc: "Doppelter Score" },
+        { color: "#9cff9c", label: "Zeitlupe",        desc: "Welt verlangsamt sich" },
+        { color: "#ffb366", label: "Turbo",           desc: "Mehr Speed & Sprung" },
+        { color: "#8df0c3", label: "Schrumpfen",      desc: "Kleiner = weniger Treffer" },
+        { color: "#ff8899", label: "Groß",            desc: "Werde größer" },
+      ];
+      const rowH = 40;
+      const rowStartY = 84;
+      infoEffects.forEach((eff, i) => {
+        const ry = rowStartY + i * rowH;
+        const rm = ry + rowH / 2;
+        // Row hover bg
+        ctx.fillStyle = "rgba(255,255,255,0.018)";
+        ctx.fillRect(8, ry + 2, infoPanelW - 16, rowH - 3);
+        // Color dot
+        ctx.fillStyle = eff.color;
+        ctx.beginPath();
+        ctx.arc(26, rm, 5, 0, Math.PI * 2);
+        ctx.fill();
+        // Label
+        ctx.textAlign = "left";
+        ctx.textBaseline = "top";
+        ctx.font = `600 11px ${SECONDARY_FONT}`;
+        ctx.fillStyle = eff.color;
+        ctx.fillText(eff.label, 40, ry + 8);
+        // Description
+        ctx.font = `400 10px ${SECONDARY_FONT}`;
+        ctx.fillStyle = "rgba(180,210,230,0.65)";
+        ctx.fillText(eff.desc, 40, ry + 22);
+      });
+
+      // Divider before hint
+      const hintDivY = rowStartY + infoEffects.length * rowH + 4;
+      ctx.strokeStyle = "rgba(79,160,255,0.2)";
+      ctx.lineWidth = 1;
+      ctx.beginPath();
+      ctx.moveTo(16, hintDivY);
+      ctx.lineTo(infoPanelW - 16, hintDivY);
+      ctx.stroke();
+
+      // Pause hint
+      const hintY = hintDivY + 14;
+      const hintPulse = 0.55 + 0.45 * Math.sin(globalTime * 1.4);
+      ctx.textAlign = "center";
+      ctx.textBaseline = "middle";
+      ctx.font = `600 11px ${SECONDARY_FONT}`;
+      ctx.fillStyle = `rgba(160,210,240,${0.6 + 0.3 * hintPulse})`;
+      ctx.fillText("[ P ]  Pause", infoPanelW / 2, hintY);
 
       ctx.restore();
     }
