@@ -39,7 +39,7 @@ document.addEventListener("DOMContentLoaded", () => {
   let _splashEl = document.createElement('div');
   _splashEl.style.cssText =
     'position:fixed;inset:0;z-index:10000;' +
-    'background:#020712 url("https://cdn.jsdelivr.net/gh/NexusNovaGames/FlappyNexus@main/startscreen.png") center/cover no-repeat;' +
+    'background:#020712 url("https://cdn.jsdelivr.net/gh/NexusNovaGames/JumpingNexus@main/startscreen.png") center/cover no-repeat;' +
     'display:flex;align-items:flex-end;justify-content:center;' +
     'padding-bottom:max(60px,9vh);box-sizing:border-box;cursor:pointer;' +
     '-webkit-tap-highlight-color:transparent;';
@@ -332,11 +332,11 @@ document.addEventListener("DOMContentLoaded", () => {
     _titleIdx: 0,
     _mainThemeIdx: 0,
     tracks: {
-      titleScreen:   ['https://cdn.jsdelivr.net/gh/NexusNovaGames/FlappyNexus@main/assets/audio/title-screen-01.mp3', 'https://cdn.jsdelivr.net/gh/NexusNovaGames/FlappyNexus@main/assets/audio/title-screen-02.mp3'],
-      mainTheme:     ['https://cdn.jsdelivr.net/gh/NexusNovaGames/FlappyNexus@main/assets/audio/main-theme-01.mp3', 'https://cdn.jsdelivr.net/gh/NexusNovaGames/FlappyNexus@main/assets/audio/main-theme-02.mp3', 'https://cdn.jsdelivr.net/gh/NexusNovaGames/FlappyNexus@main/assets/audio/main-theme-03.mp3', 'https://cdn.jsdelivr.net/gh/NexusNovaGames/FlappyNexus@main/assets/audio/main-theme-04.mp3', 'https://cdn.jsdelivr.net/gh/NexusNovaGames/FlappyNexus@main/assets/audio/main-theme-05.mp3'],
-      preFinalBoss:  ['https://cdn.jsdelivr.net/gh/NexusNovaGames/FlappyNexus@main/assets/audio/pre-final-boss.mp3'],
-      bossEncounter: ['https://cdn.jsdelivr.net/gh/NexusNovaGames/FlappyNexus@main/assets/audio/boss-encounter-01.mp3', 'https://cdn.jsdelivr.net/gh/NexusNovaGames/FlappyNexus@main/assets/audio/boss-encounter-02.mp3', 'https://cdn.jsdelivr.net/gh/NexusNovaGames/FlappyNexus@main/assets/audio/boss-encounter-03.mp3', 'https://cdn.jsdelivr.net/gh/NexusNovaGames/FlappyNexus@main/assets/audio/boss-encounter-04.mp3', 'https://cdn.jsdelivr.net/gh/NexusNovaGames/FlappyNexus@main/assets/audio/boss-encounter-05.mp3'],
-      nnAnthem:      ['https://cdn.jsdelivr.net/gh/NexusNovaGames/FlappyNexus@main/assets/audio/nn-anthem.mp3'],
+      titleScreen:   ['https://cdn.jsdelivr.net/gh/NexusNovaGames/JumpingNexus@main/assets/audio/title-screen-01.mp3', 'https://cdn.jsdelivr.net/gh/NexusNovaGames/JumpingNexus@main/assets/audio/title-screen-02.mp3'],
+      mainTheme:     ['https://cdn.jsdelivr.net/gh/NexusNovaGames/JumpingNexus@main/assets/audio/main-theme-01.mp3', 'https://cdn.jsdelivr.net/gh/NexusNovaGames/JumpingNexus@main/assets/audio/main-theme-02.mp3', 'https://cdn.jsdelivr.net/gh/NexusNovaGames/JumpingNexus@main/assets/audio/main-theme-03.mp3', 'https://cdn.jsdelivr.net/gh/NexusNovaGames/JumpingNexus@main/assets/audio/main-theme-04.mp3', 'https://cdn.jsdelivr.net/gh/NexusNovaGames/JumpingNexus@main/assets/audio/main-theme-05.mp3'],
+      preFinalBoss:  ['https://cdn.jsdelivr.net/gh/NexusNovaGames/JumpingNexus@main/assets/audio/pre-final-boss.mp3'],
+      bossEncounter: ['https://cdn.jsdelivr.net/gh/NexusNovaGames/JumpingNexus@main/assets/audio/boss-encounter-01.mp3', 'https://cdn.jsdelivr.net/gh/NexusNovaGames/JumpingNexus@main/assets/audio/boss-encounter-02.mp3', 'https://cdn.jsdelivr.net/gh/NexusNovaGames/JumpingNexus@main/assets/audio/boss-encounter-03.mp3', 'https://cdn.jsdelivr.net/gh/NexusNovaGames/JumpingNexus@main/assets/audio/boss-encounter-04.mp3', 'https://cdn.jsdelivr.net/gh/NexusNovaGames/JumpingNexus@main/assets/audio/boss-encounter-05.mp3'],
+      nnAnthem:      ['https://cdn.jsdelivr.net/gh/NexusNovaGames/JumpingNexus@main/assets/audio/nn-anthem.mp3'],
     },
   };
   // _musEl, _musOut, _musIn declared near top of scope (above resizeCanvas call)
@@ -747,7 +747,7 @@ document.addEventListener("DOMContentLoaded", () => {
     ctx.restore();
   }
 
-const ASSET_BASE = "https://raw.githubusercontent.com/NexusNovaGames/FlappyNexus/main/";
+const ASSET_BASE = "https://raw.githubusercontent.com/NexusNovaGames/JumpingNexus/main/";
 
 const assets = {
     bg1: loadImage(ASSET_BASE + "background1.png"),
