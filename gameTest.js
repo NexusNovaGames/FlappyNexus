@@ -2283,16 +2283,14 @@ Boss erscheint.`,
     if (Math.random() < lootSpawnChance) {
       // 25% chance for a golden risky box at the gap edge (only if gap is wide enough)
       const isGolden = Math.random() < 0.25 && pipeGap > 110;
-      let centerY, type, pipeYOffset;
+      let centerY, type, goldenAtTop;
       if (isGolden) {
-        const atTop = Math.random() < 0.5;
-        // Place outside the gap (in the solid pipe area) as a risky reward
-        pipeYOffset = atTop ? -22 : pipeGap + 22;
-        centerY = pipe.gapY + pipeYOffset;
+        goldenAtTop = Math.random() < 0.5;
+        // Center exactly at the gap edge — box hangs half into the gap, player must skim the pipe
+        centerY = goldenAtTop ? pipe.gapY : pipe.gapY + pipeGap;
         type = Math.random() < 0.55 ? "double" : "shield";
       } else {
-        pipeYOffset = pipeGap / 2;
-        centerY = pipe.gapY + pipeYOffset;
+        centerY = pipe.gapY + pipeGap / 2;
         type = randomPowerup(getPhaseIndex());
       }
       if (type === "ghost") ghostChallenge = true;
@@ -2300,7 +2298,7 @@ Boss erscheint.`,
         x: pipe.x + pipeWidth / 2,
         y: centerY,
         baseY: centerY,
-        pipeYOffset,
+        goldenAtTop,
         swayPhase: Math.random() * Math.PI * 2,
         swayAmp: isGolden ? 0 : 26 + Math.random() * 18,
         size: Math.round(63 * SIZE_SCALE),
@@ -2386,8 +2384,11 @@ Boss erscheint.`,
         }
       } else if (b.pipe) {
         b.x = b.pipe.x + pipeWidth / 2;
-        const yOff = b.pipeYOffset !== undefined ? b.pipeYOffset : pipeGap / 2;
-        b.y = b.pipe.gapY + yOff + sway;
+        if (b.golden) {
+          b.y = b.goldenAtTop ? b.pipe.gapY : b.pipe.gapY + pipeGap;
+        } else {
+          b.y = b.pipe.gapY + pipeGap / 2 + sway;
+        }
       } else {
         b.x -= spd * dt;
         b.y = b.baseY + sway;
@@ -5339,7 +5340,7 @@ function drawUI() {
     ctx.fillStyle = `rgba(130,175,210,${0.65 + 0.25 * devGlow})`;
     ctx.shadowColor = "rgba(79,160,255,0.4)";
     ctx.shadowBlur = 5 * devGlow;
-    ctx.fillText("Gamedesign: Patrick Dause", WORLD_W / 2, WORLD_H - 50);
+    ctx.fillText("Gameplay: Patrick Dause", WORLD_W / 2, WORLD_H - 50);
     ctx.shadowBlur = 0;
     ctx.font = `400 10px ${SECONDARY_FONT}`;
     ctx.fillStyle = `rgba(80,110,140,${0.55 + 0.2 * devGlow})`;
@@ -5517,7 +5518,7 @@ function drawUI() {
       ctx.fillStyle = `rgba(130,175,210,${0.7 + 0.3 * devPulse})`;
       ctx.shadowColor = "rgba(79,160,255,0.5)";
       ctx.shadowBlur = 6 * devPulse;
-      ctx.fillText("Gamedesign: Patrick Dause", WORLD_W / 2, credY + 8);
+      ctx.fillText("Gameplay: Patrick Dause", WORLD_W / 2, credY + 8);
       ctx.restore();
       ctx.font = `400 10px ${SECONDARY_FONT}`;
       ctx.fillStyle = `rgba(80,110,140,${0.55 + 0.2 * devPulse})`;
