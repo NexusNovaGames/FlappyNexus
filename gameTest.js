@@ -5609,7 +5609,7 @@ function drawUI() {
       parts.forEach(p => {
         ctx.fillStyle = p.highlight ? "#9ef" : "#6a8099";
         if (p.highlight) { ctx.shadowColor = "#9ef"; ctx.shadowBlur = 8; }
-        ctx.fillText(p.text, drawX, credY + 38);
+        ctx.fillText(p.text, drawX, credY + 24);
         if (p.highlight) ctx.shadowBlur = 0;
         drawX += ctx.measureText(p.text).width;
       });
