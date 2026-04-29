@@ -959,6 +959,7 @@ const assets = {
   let scoreTauntTimer = 0;
   let phaseMilestoneCooldown = 0;
   let nnTauntActive = false;
+  let _goActiveEffects = [];
   let nnTauntText = "";
   let nnTauntX = 0;
   let nnTauntY = 0;
@@ -1040,7 +1041,7 @@ const assets = {
     big: 7,
     shield: 10,
     turbo: 5,
-    magnet: 6,
+    magnet: 10,
     multiShot: 5,
     scoreRush: 12,
   };
@@ -1673,6 +1674,16 @@ Boss erscheint.`,
 
   function endGame() {
     if (gameOver) return;
+    // Snapshot active powerup effects for display on game over screen
+    _goActiveEffects = [
+      { key: "ghostTimer",     color: "#88ccff", label: "Geist" },
+      { key: "shieldTimer",    color: "#5cc8ff", label: "Schild" },
+      { key: "doubleTimer",    color: "#ffe066", label: "2× Punkte" },
+      { key: "shrinkTimer",    color: "#8df0c3", label: "Schrumpfen" },
+      { key: "bigTimer",       color: "#ff8899", label: "Groß" },
+      { key: "magnetTimer",    color: "#ff88dd", label: "Magnet" },
+      { key: "scoreRushTimer", color: "#ffcc00", label: "Score-Rush" },
+    ].filter(e => player[e.key] > 0);
     gameOver = true;
     gameOverAnimTimer = 0;
     gameRunning = false;
@@ -1770,6 +1781,7 @@ Boss erscheint.`,
 
   function checkScoreTaunts() {
     if (nnTauntActive) return false;
+    if (phaseTextActive) return false;
     if (!playerName || !getHighlightInfo(playerName).isHighlight) return false;
     if (score < SCORE_TAUNT_MIN || score > SCORE_TAUNT_MAX) return false;
     if (nextScoreTaunt <= 0) scheduleNextScoreTaunt();
@@ -2301,10 +2313,9 @@ Boss erscheint.`,
       let centerY, type, goldenAtTop;
       if (isGolden) {
         goldenAtTop = Math.random() < 0.5;
-        // Center half-a-box inside the gap so box is fully visible but flush against the pipe wall
-        const _ghalf = Math.round(63 * SIZE_SCALE) / 2;
-        centerY = goldenAtTop ? pipe.gapY + _ghalf : pipe.gapY + pipeGap - _ghalf;
-        type = Math.random() < 0.55 ? "double" : "shield";
+        // Upper or lower quarter of the gap — well inside, floats with sway
+        centerY = goldenAtTop ? pipe.gapY + pipeGap * 0.25 : pipe.gapY + pipeGap * 0.75;
+        type = Math.random() < 0.5 ? "shield" : "regen";
       } else {
         centerY = pipe.gapY + pipeGap / 2;
         type = randomPowerup(getPhaseIndex());
@@ -2316,7 +2327,7 @@ Boss erscheint.`,
         baseY: centerY,
         goldenAtTop,
         swayPhase: Math.random() * Math.PI * 2,
-        swayAmp: isGolden ? 0 : 26 + Math.random() * 18,
+        swayAmp: isGolden ? 14 : 26 + Math.random() * 18,
         size: Math.round(63 * SIZE_SCALE),
         collected: false,
         type,
@@ -2403,8 +2414,7 @@ Boss erscheint.`,
           if (b.pipe) {
             b.x = b.pipe.x + pipeWidth / 2;
             if (b.golden) {
-              const _bh = b.size / 2;
-              b.y = b.goldenAtTop ? b.pipe.gapY + _bh : b.pipe.gapY + pipeGap - _bh;
+              b.y = (b.goldenAtTop ? b.pipe.gapY + pipeGap * 0.25 : b.pipe.gapY + pipeGap * 0.75) + sway;
             } else {
               b.y = b.pipe.gapY + pipeGap / 2 + sway;
             }
@@ -2416,8 +2426,7 @@ Boss erscheint.`,
       } else if (b.pipe) {
         b.x = b.pipe.x + pipeWidth / 2;
         if (b.golden) {
-          const _bh = b.size / 2;
-          b.y = b.goldenAtTop ? b.pipe.gapY + _bh : b.pipe.gapY + pipeGap - _bh;
+          b.y = (b.goldenAtTop ? b.pipe.gapY + pipeGap * 0.25 : b.pipe.gapY + pipeGap * 0.75) + sway;
         } else {
           b.y = b.pipe.gapY + pipeGap / 2 + sway;
         }
@@ -4573,7 +4582,10 @@ Boss erscheint.`,
       ctx.shadowBlur = 22;
     }
 
-    if (player.colorShift !== 0) ctx.filter = `hue-rotate(${player.colorShift}deg)`;
+    if (player.colorShift !== 0 && !perfMode) {
+      ctx.shadowColor = `hsl(${player.colorShift}, 85%, 65%)`;
+      ctx.shadowBlur = 14;
+    }
 
     if (img.complete && img.naturalWidth) {
       const aspect = img.width / img.height;
@@ -4682,8 +4694,8 @@ function drawUI() {
   const _hudNameSize = Math.round(14 * ms);
   const _hudScoreSize = Math.round(18 * ms);
   const _hudNameY = 14;
-  const _hudScoreY = _hudNameY + _hudNameSize + Math.round(10 * ms);
-  const _hudHsY = _hudScoreY + Math.round(_hudScoreSize * 1.25) + Math.round(8 * ms);
+  const _hudScoreY = _hudNameY + _hudNameSize + Math.round(12 * ms);
+  const _hudHsY = _hudScoreY + Math.round(_hudScoreSize * 1.5) + Math.round(10 * ms);
   ctx.fillStyle = "#8fd3ff";
   ctx.font = `600 ${_hudNameSize}px ${SECONDARY_FONT}`;
   ctx.fillText(`Spieler: ${playerName || "---"}`, 16, _hudNameY);
@@ -5378,12 +5390,11 @@ function drawUI() {
     ctx.fillStyle = `rgba(130,175,210,${0.65 + 0.25 * devGlow})`;
     ctx.shadowColor = "rgba(79,160,255,0.4)";
     ctx.shadowBlur = 5 * devGlow;
-    ctx.fillText("Gameplay: Patrick Dause", WORLD_W / 2, WORLD_H - 50);
+    ctx.fillText("Gameplay & Musik: Patrick Dause", WORLD_W / 2, WORLD_H - 40);
     ctx.shadowBlur = 0;
     ctx.font = `400 10px ${SECONDARY_FONT}`;
     ctx.fillStyle = `rgba(80,110,140,${0.55 + 0.2 * devGlow})`;
-    ctx.fillText("Musik: Patrick Dause", WORLD_W / 2, WORLD_H - 34);
-    ctx.fillText("Design: Katja Littawe  ·  Elisa Hikel  ·  Jennifer Linz", WORLD_W / 2, WORLD_H - 18);
+    ctx.fillText("Design: Katja Littawe  ·  Elisa Hikel  ·  Jennifer Linz", WORLD_W / 2, WORLD_H - 24);
     ctx.restore();
 
     ctx.restore();
@@ -5498,9 +5509,28 @@ function drawUI() {
       if (score >= highscore && score > 0) { ctx.shadowColor = "#ffe066"; ctx.shadowBlur = 10; }
       ctx.fillText(`Highscore: ${highscore}`, WORLD_W / 2, WORLD_H / 2 + 16);
       ctx.shadowBlur = 0;
+      // Active effects at time of death
+      if (_goActiveEffects.length > 0) {
+        ctx.textBaseline = "middle";
+        const effDotSize = 8;
+        const effPadX = 48;
+        const effY = WORLD_H / 2 + 44;
+        ctx.font = `600 10px ${SECONDARY_FONT}`;
+        const totalEffW = _goActiveEffects.reduce((sum, e) => sum + ctx.measureText(e.label).width + effDotSize + 6 + effPadX, 0) - effPadX;
+        let effX = WORLD_W / 2 - totalEffW / 2;
+        _goActiveEffects.forEach((eff, i) => {
+          ctx.fillStyle = eff.color;
+          ctx.fillRect(effX, effY - effDotSize / 2, effDotSize, effDotSize);
+          ctx.fillStyle = "rgba(220,235,255,0.85)";
+          ctx.textAlign = "left";
+          ctx.fillText(eff.label, effX + effDotSize + 4, effY);
+          effX += effDotSize + 4 + ctx.measureText(eff.label).width + effPadX;
+        });
+        ctx.textAlign = "center";
+      }
       ctx.font = `600 13px ${SECONDARY_FONT}`;
       ctx.fillStyle = "#7ab4d8";
-      ctx.fillText("LEERTASTE / TAP zum Restart", WORLD_W / 2, WORLD_H / 2 + 54);
+      ctx.fillText("LEERTASTE / TAP zum Restart", WORLD_W / 2, WORLD_H / 2 + 66);
 
       // CTA Button – pulsing glow, rounded
       ctx.globalAlpha = goBtn;
@@ -5556,11 +5586,8 @@ function drawUI() {
       ctx.fillStyle = `rgba(130,175,210,${0.7 + 0.3 * devPulse})`;
       ctx.shadowColor = "rgba(79,160,255,0.5)";
       ctx.shadowBlur = 6 * devPulse;
-      ctx.fillText("Gameplay: Patrick Dause", WORLD_W / 2, credY + 8);
+      ctx.fillText("Gameplay & Musik: Patrick Dause", WORLD_W / 2, credY + 8);
       ctx.restore();
-      ctx.font = `400 10px ${SECONDARY_FONT}`;
-      ctx.fillStyle = `rgba(80,110,140,${0.55 + 0.2 * devPulse})`;
-      ctx.fillText("Musik: Patrick Dause", WORLD_W / 2, credY + 22);
       // Design credits – cycle glow across the three names
       const designNames = ["Katja Littawe", "Elisa Hikel", "Jennifer Linz"];
       const nameHighlight = Math.floor((globalTime * 0.5) % designNames.length);
