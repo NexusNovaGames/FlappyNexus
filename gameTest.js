@@ -2401,36 +2401,28 @@ Boss erscheint.`,
 
     for (let i = lootboxes.length - 1; i >= 0; i--) {
       const b = lootboxes[i];
-      let sway;
+      // Compute pattern offsets (Z-trace for golden, sine sway for normal)
+      let xOff = 0, yOff;
       if (b.golden) {
-        // Z-pattern with dominant diagonals (15% top / 35% diag-down / 15% bottom / 35% diag-up)
-        // — visible diagonal strokes, brief plateaus at extremes
-        const zPeriod = 2.6;
+        // Z-trace: 4 phases, 25% each — top stroke, diag down-left, bottom stroke, diag up-left
+        // Both X and Y oscillate so the path is clearly 2D (not just up/down)
+        const zPeriod = 3.0;
         const p = (((lootSwayTimer + b.swayPhase) / zPeriod) % 1 + 1) % 1;
-        let zFactor;
-        if (p < 0.15)      zFactor = 1;
-        else if (p < 0.50) zFactor = 1 - (p - 0.15) * (2 / 0.35);
-        else if (p < 0.65) zFactor = -1;
-        else               zFactor = -1 + (p - 0.65) * (2 / 0.35);
-        sway = zFactor * b.swayAmp;
+        let xR, yR;
+        if (p < 0.25)        { const t = p / 0.25;          xR = -1 + t * 2; yR = -1; }
+        else if (p < 0.50)   { const t = (p - 0.25) / 0.25; xR =  1 - t * 2; yR = -1 + t * 2; }
+        else if (p < 0.75)   { const t = (p - 0.50) / 0.25; xR = -1 + t * 2; yR =  1; }
+        else                 { const t = (p - 0.75) / 0.25; xR =  1 - t * 2; yR =  1 - t * 2; }
+        xOff = xR * 110;            // horizontal swing amplitude
+        yOff = yR * b.swayAmp;      // vertical swing amplitude
       } else {
-        sway = Math.sin(lootSwayTimer * 2 + b.swayPhase) * b.swayAmp;
+        yOff = Math.sin(lootSwayTimer * 2 + b.swayPhase) * b.swayAmp;
       }
 
-      // 1) Natural motion — always applied first, so the box never freezes
-      if (b.pipe) {
-        b.x = b.pipe.x + (b.pipeOffsetX !== undefined ? b.pipeOffsetX : pipeWidth / 2);
-        if (b.golden) {
-          b.y = b.baseY + sway;
-        } else {
-          b.y = b.pipe.gapY + pipeGap / 2 + sway;
-        }
-      } else {
-        b.x -= spd * dt;
-        b.y = b.baseY + sway;
-      }
-
-      // 2) Magnet pull is additive — preserves natural scroll velocity at the edge
+      // 1) Magnet pull — when in range, OVERRIDES natural motion entirely
+      //    Pull speed always >= 200 px/s (= world scroll), so a box behind the
+      //    player can't get "pushed away" by the world while pull is weak at edge.
+      let magnetTookOver = false;
       if (player.magnetTimer > 0 && !b.collected) {
         const mdx = player.x - b.x;
         const mdy = player.y - b.y;
@@ -2438,11 +2430,26 @@ Boss erscheint.`,
         const magnetRange = 280;
         if (mdist < magnetRange && mdist > 1) {
           const t = 1 - mdist / magnetRange;
-          const pull = t * 700 * dt;
-          b.x += (mdx / mdist) * pull;
-          b.y += (mdy / mdist) * pull;
-          // Detach once the pull is meaningful, so subsequent frames don't snap back to pipe Y
-          if (b.pipe && t > 0.3) { b.baseY = b.y; b.pipe = null; }
+          const pullSpeed = 220 + t * 600;       // 220 at edge, 820 near center
+          b.x += (mdx / mdist) * pullSpeed * dt;
+          b.y += (mdy / mdist) * pullSpeed * dt;
+          if (b.pipe) { b.baseY = b.y; b.pipe = null; }
+          magnetTookOver = true;
+        }
+      }
+
+      // 2) Natural motion — only if magnet didn't take over this frame
+      if (!magnetTookOver) {
+        if (b.pipe) {
+          b.x = b.pipe.x + (b.pipeOffsetX !== undefined ? b.pipeOffsetX : pipeWidth / 2) + xOff;
+          if (b.golden) {
+            b.y = b.baseY + yOff;
+          } else {
+            b.y = b.pipe.gapY + pipeGap / 2 + yOff;
+          }
+        } else {
+          b.x -= spd * dt;
+          b.y = b.baseY + yOff;
         }
       }
 
