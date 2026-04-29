@@ -2122,6 +2122,7 @@ Boss erscheint.`,
       scorePopups.push({ x: player.x, y: player.y - 40, life: 1.0, text: '+1 HP' });
     } else if (type === "scoreRush") {
       player.scoreRushTimer += DURATIONS.scoreRush;
+      scorePopups.push({ x: player.x, y: player.y - 40, life: 1.2, text: 'Score-Rush!' });
     } else if (type === "multiShot") {
       player.multiShotTimer += DURATIONS.multiShot;
     } else if (type === "bossshield") {
@@ -2308,26 +2309,32 @@ Boss erscheint.`,
 
   function spawnLootbox(pipe) {
     if (Math.random() < lootSpawnChance) {
-      // 25% chance for a golden risky box at the gap edge (only if gap is wide enough)
-      const isGolden = Math.random() < 0.25 && pipeGap > 110;
-      let centerY, type, goldenAtTop;
+      // 25% chance for a golden risky box — spawns between pipes (not in the gap)
+      const isGolden = Math.random() < 0.25;
+      let centerY, type, goldenAtTop, offsetX;
       if (isGolden) {
         goldenAtTop = Math.random() < 0.5;
-        // Upper or lower quarter of the gap — well inside, floats with sway
-        centerY = goldenAtTop ? pipe.gapY + pipeGap * 0.25 : pipe.gapY + pipeGap * 0.75;
-        type = Math.random() < 0.5 ? "shield" : "regen";
+        // Y in upper or lower portion of the safe area — away from gap path
+        centerY = goldenAtTop
+          ? 60 + Math.random() * 70
+          : WORLD_H - 60 - Math.random() * 70;
+        // X halfway to the next pipe — in the open horizontal corridor between pairs
+        offsetX = pipeSpawnInterval * pipeSpeed * 0.5;
+        type = Math.random() < 0.7 ? "scoreRush" : "shield";
       } else {
         centerY = pipe.gapY + pipeGap / 2;
+        offsetX = pipeWidth / 2;
         type = randomPowerup(getPhaseIndex());
       }
       if (type === "ghost") ghostChallenge = true;
       lootboxes.push({
-        x: pipe.x + pipeWidth / 2,
+        x: pipe.x + offsetX,
         y: centerY,
         baseY: centerY,
         goldenAtTop,
+        pipeOffsetX: offsetX,
         swayPhase: Math.random() * Math.PI * 2,
-        swayAmp: isGolden ? 14 : 26 + Math.random() * 18,
+        swayAmp: isGolden ? 22 : 26 + Math.random() * 18,
         size: Math.round(63 * SIZE_SCALE),
         collected: false,
         type,
@@ -2412,9 +2419,9 @@ Boss erscheint.`,
         } else {
           // Outside range — keep moving normally
           if (b.pipe) {
-            b.x = b.pipe.x + pipeWidth / 2;
+            b.x = b.pipe.x + (b.pipeOffsetX !== undefined ? b.pipeOffsetX : pipeWidth / 2);
             if (b.golden) {
-              b.y = (b.goldenAtTop ? b.pipe.gapY + pipeGap * 0.25 : b.pipe.gapY + pipeGap * 0.75) + sway;
+              b.y = b.baseY + sway;
             } else {
               b.y = b.pipe.gapY + pipeGap / 2 + sway;
             }
@@ -2424,9 +2431,9 @@ Boss erscheint.`,
           }
         }
       } else if (b.pipe) {
-        b.x = b.pipe.x + pipeWidth / 2;
+        b.x = b.pipe.x + (b.pipeOffsetX !== undefined ? b.pipeOffsetX : pipeWidth / 2);
         if (b.golden) {
-          b.y = (b.goldenAtTop ? b.pipe.gapY + pipeGap * 0.25 : b.pipe.gapY + pipeGap * 0.75) + sway;
+          b.y = b.baseY + sway;
         } else {
           b.y = b.pipe.gapY + pipeGap / 2 + sway;
         }
@@ -2450,6 +2457,10 @@ Boss erscheint.`,
           big: "rgba(255,110,110,1)",
           shield: "rgba(120,200,255,1)",
           turbo: "rgba(255,170,80,1)",
+          magnet: "rgba(255,136,221,1)",
+          regen: "rgba(140,255,180,1)",
+          scoreRush: "rgba(255,204,0,1)",
+          multiShot: "rgba(170,221,255,1)",
           bossheal: "rgba(140,255,200,1)",
           bossshield: "rgba(160,220,255,1)",
         };
@@ -2459,8 +2470,13 @@ Boss erscheint.`,
         continue;
       }
 
-      // Cull: off left edge OR pipe scrolled off and was removed (b.pipe no longer moving)
-      if (b.x < -120 || (b.pipe && b.pipe.x + pipeWidth < -80)) {
+      // Detach from a pipe that has scrolled off — keeps the box scrolling normally
+      // until it leaves the screen (important for golden boxes which can be far from their pipe)
+      if (b.pipe && b.pipe.x + pipeWidth < -80) {
+        b.baseY = b.y;
+        b.pipe = null;
+      }
+      if (b.x < -120) {
         lootboxes.splice(i, 1);
       }
     }
@@ -4582,11 +4598,6 @@ Boss erscheint.`,
       ctx.shadowBlur = 22;
     }
 
-    if (player.colorShift !== 0 && !perfMode) {
-      ctx.shadowColor = `hsl(${player.colorShift}, 85%, 65%)`;
-      ctx.shadowBlur = 14;
-    }
-
     if (img.complete && img.naturalWidth) {
       const aspect = img.width / img.height;
       const scale = 1.62;
@@ -4672,7 +4683,6 @@ Boss erscheint.`,
       ctx.fillText(label, -r - 6, -r - 14);
     }
 
-    ctx.filter = "none";
     ctx.restore();
   }
 
