@@ -695,13 +695,16 @@ document.addEventListener("DOMContentLoaded", () => {
 
   function drawEffectCircles() {
     const effects = [
-      { key: "ghostTimer", dur: DURATIONS.ghost, color: "#88ccff", label: "Geist" },
-      { key: "shieldTimer", dur: DURATIONS.shield, color: "#5cc8ff", label: "Schild" },
-      { key: "doubleTimer", dur: DURATIONS.double, color: "#ffe066", label: "Doppeltepunkte" },
-      { key: "slowTimer", dur: DURATIONS.slow, color: "#9cff9c", label: "Zeitlupe" },
-      { key: "turboTimer", dur: DURATIONS.turbo, color: "#ffb366", label: "Turbo" },
-      { key: "shrinkTimer", dur: DURATIONS.shrink, color: "#8df0c3", label: "Schrumpfen" },
-      { key: "bigTimer", dur: DURATIONS.big, color: "#ff8899", label: "Groß" },
+      { key: "ghostTimer",     dur: DURATIONS.ghost,     color: "#88ccff", label: "Geist" },
+      { key: "shieldTimer",    dur: DURATIONS.shield,    color: "#5cc8ff", label: "Schild" },
+      { key: "doubleTimer",    dur: DURATIONS.double,    color: "#ffe066", label: "2× Punkte" },
+      { key: "slowTimer",      dur: DURATIONS.slow,      color: "#9cff9c", label: "Zeitlupe" },
+      { key: "turboTimer",     dur: DURATIONS.turbo,     color: "#ffb366", label: "Turbo" },
+      { key: "shrinkTimer",    dur: DURATIONS.shrink,    color: "#8df0c3", label: "Schrumpfen" },
+      { key: "bigTimer",       dur: DURATIONS.big,       color: "#ff8899", label: "Groß" },
+      { key: "magnetTimer",    dur: DURATIONS.magnet,    color: "#ff88dd", label: "Magnet" },
+      { key: "multiShotTimer", dur: DURATIONS.multiShot, color: "#aaddff", label: "Multi-Shot" },
+      { key: "scoreRushTimer", dur: DURATIONS.scoreRush, color: "#ffcc00", label: "Score-Rush" },
     ].filter(e => player[e.key] > 0);
 
     if (!effects.length) return;
@@ -891,6 +894,9 @@ const assets = {
     bigTimer: 0,
     shieldTimer: 0,
     turboTimer: 0,
+    magnetTimer: 0,
+    multiShotTimer: 0,
+    scoreRushTimer: 0,
     debuffGraceTimer: 0,
     beamGraceTimer: 0,
     lockTimer: 0,
@@ -1020,6 +1026,9 @@ const assets = {
     big: 7,
     shield: 10,
     turbo: 5,
+    magnet: 6,
+    multiShot: 5,
+    scoreRush: 12,
   };
 
   // Boss Triggers
@@ -1579,6 +1588,9 @@ Boss erscheint.`,
       bigTimer: 0,
       shieldTimer: 0,
       turboTimer: 0,
+      magnetTimer: 0,
+      multiShotTimer: 0,
+      scoreRushTimer: 0,
       shieldHits: 1,
       debuffGraceTimer: 0,
       beamGraceTimer: 0,
@@ -2007,11 +2019,11 @@ Boss erscheint.`,
   //  Powerups
   // ======================================================
   function randomPowerup(phaseIndex = getPhaseIndex()) {
-    const base = ["ghost", "shrink", "double", "big", "shield"];
+    const base = ["ghost", "shrink", "double", "big", "shield", "magnet", "regen", "scoreRush", "multiShot"];
     if (phaseIndex >= 4) {
-      base.push("shield", "double", "shield");
+      base.push("shield", "double", "shield", "scoreRush");
     } else if (phaseIndex >= 2) {
-      base.push("shield", "ghost");
+      base.push("shield", "ghost", "magnet");
     }
     return base[Math.floor(Math.random() * base.length)];
   }
@@ -2048,6 +2060,10 @@ Boss erscheint.`,
       big: "rgba(255,110,110,1)",
       shield: "rgba(120,200,255,1)",
       turbo: "rgba(255,170,80,1)",
+      magnet: "rgba(255,136,221,1)",
+      regen: "rgba(120,255,180,1)",
+      scoreRush: "rgba(255,204,0,1)",
+      multiShot: "rgba(170,221,255,1)",
       beam: "rgba(255,200,120,1)",
       spread: "rgba(200,180,255,1)",
     };
@@ -2071,6 +2087,15 @@ Boss erscheint.`,
       player.invincible = false;
     } else if (type === "turbo") {
       player.turboTimer += DURATIONS.turbo;
+    } else if (type === "magnet") {
+      player.magnetTimer += DURATIONS.magnet;
+    } else if (type === "regen") {
+      player.hp = Math.min(player.maxHp, player.hp + 1);
+      scorePopups.push({ x: player.x, y: player.y - 40, life: 1.0, text: '+1 HP' });
+    } else if (type === "scoreRush") {
+      player.scoreRushTimer += DURATIONS.scoreRush;
+    } else if (type === "multiShot") {
+      player.multiShotTimer += DURATIONS.multiShot;
     } else if (type === "bossshield") {
       player.shieldHits = 1;
       player.shieldTimer = 0;
@@ -2148,6 +2173,21 @@ Boss erscheint.`,
     if (player.turboTimer > 0) {
       player.turboTimer -= dt;
       if (player.turboTimer < 0) player.turboTimer = 0;
+    }
+
+    if (player.magnetTimer > 0) {
+      player.magnetTimer -= dt;
+      if (player.magnetTimer < 0) player.magnetTimer = 0;
+    }
+
+    if (player.multiShotTimer > 0) {
+      player.multiShotTimer -= dt;
+      if (player.multiShotTimer < 0) player.multiShotTimer = 0;
+    }
+
+    if (player.scoreRushTimer > 0) {
+      player.scoreRushTimer -= dt;
+      if (player.scoreRushTimer < 0) player.scoreRushTimer = 0;
     }
 
     if (player.debuffGraceTimer > 0) {
@@ -2296,7 +2336,7 @@ Boss erscheint.`,
 
       if (!p.passed && p.x + pipeWidth < player.x - player.radius) {
         p.passed = true;
-        const add = player.doubleTimer > 0 ? 2 : 1;
+        const add = (player.doubleTimer > 0 ? 2 : 1) + (player.scoreRushTimer > 0 ? 1 : 0);
         score += add;
         scorePopups.push({ x: player.x, y: player.y - 30, life: 0.75, text: `+${add}` });
         const hueStep = Math.floor(score / 10);
@@ -2328,7 +2368,18 @@ Boss erscheint.`,
       const b = lootboxes[i];
       const sway = Math.sin(lootSwayTimer * 2 + b.swayPhase) * b.swayAmp;
 
-      if (b.pipe) {
+      if (player.magnetTimer > 0 && !b.collected) {
+        const mdx = player.x - b.x;
+        const mdy = player.y - b.y;
+        const mdist = Math.sqrt(mdx * mdx + mdy * mdy);
+        const magnetRange = 280;
+        if (mdist < magnetRange && mdist > 1) {
+          const pull = (1 - mdist / magnetRange) * 420 * dt;
+          b.x += (mdx / mdist) * pull;
+          b.y += (mdy / mdist) * pull;
+          b.pipe = null;
+        }
+      } else if (b.pipe) {
         b.x = b.pipe.x + pipeWidth / 2;
         b.y = b.pipe.gapY + pipeGap / 2 + sway;
       } else {
@@ -2419,6 +2470,10 @@ Boss erscheint.`,
         shots.push({ angle: a, speed: 440, size: 7 });
       }
       if (player.ammoSalvo <= 0) player.weaponMode = "normal";
+    } else if (player.multiShotTimer > 0) {
+      shots.push({ angle: -0.18, speed: 500, size: 6 });
+      shots.push({ angle: 0,     speed: 500, size: 6 });
+      shots.push({ angle:  0.18, speed: 500, size: 6 });
     } else {
       shots.push({ angle: 0, speed: 500, size: 6 });
     }
@@ -2647,6 +2702,9 @@ Boss erscheint.`,
       shieldTimer: 0,
       shieldHits: 0,
       turboTimer: 0,
+      magnetTimer: 0,
+      multiShotTimer: 0,
+      scoreRushTimer: 0,
       debuffGraceTimer: 0,
       lockTimer: 0,
       vy: 0,
@@ -5155,158 +5213,113 @@ function drawUI() {
       ctx.restore();
     }
 
-    // ── 3b. Middle column: powerup info panel ────────────────────────────
-    const infoPanelX = 572, infoPanelY = 90, infoPanelW = 262, infoPanelH = 420;
-    const infoFade = Math.max(0, Math.min(1, (introAnimTimer - 0.4) / 0.5));
-    if (infoFade > 0) {
-      ctx.save();
-      ctx.globalAlpha = infoFade;
-      ctx.translate(infoPanelX, infoPanelY);
+    // ── 3b. Left-side powerup cycling hint ──────────────────────────────
+    const hintFade = Math.max(0, Math.min(1, (introAnimTimer - 0.52) / 0.4));
+    if (hintFade > 0) {
+      const hintEffects = [
+        { color: "#88ccff", label: "Geist",        desc: "Hindernisse passieren",    star: false },
+        { color: "#5cc8ff", label: "Schild",        desc: "Nächsten Treffer blocken", star: false },
+        { color: "#ffe066", label: "2× Punkte",     desc: "Doppelter Score",          star: false },
+        { color: "#8df0c3", label: "Schrumpfen",    desc: "Kleiner = weniger Treffer",star: false },
+        { color: "#ff8899", label: "Groß",          desc: "Werde riesig",             star: false },
+        { color: "#ff88dd", label: "Magnet",        desc: "Lootboxen anziehen",       star: false },
+        { color: "#ffcc00", label: "Score-Rush",    desc: "+1 Extra-Punkt pro Säule", star: false },
+        { color: "#aaddff", label: "Multi-Shot",    desc: "3 Schüsse gleichzeitig",   star: false },
+        { color: "#ffd700", label: "★ Goldene Box", desc: "Risiko = mehr Belohnung!", star: true  },
+      ];
+      const cycleDur = 2.5;
+      const cycleIdx = Math.floor(globalTime / cycleDur) % hintEffects.length;
+      const t = (globalTime % cycleDur) / cycleDur;
 
-      // Panel background
-      ctx.fillStyle = "rgba(4,10,26,0.93)";
-      ctx.strokeStyle = "rgba(79,210,255,0.3)";
-      ctx.lineWidth = 1.5;
-      ctx.fillRect(0, 0, infoPanelW, infoPanelH);
-      ctx.strokeRect(0, 0, infoPanelW, infoPanelH);
-
-      // Top accent gradient
-      const iag = ctx.createLinearGradient(0, 0, infoPanelW, 0);
-      iag.addColorStop(0, "rgba(79,210,255,0.0)");
-      iag.addColorStop(0.5, "rgba(79,210,255,0.7)");
-      iag.addColorStop(1, "rgba(79,210,255,0.0)");
-      ctx.fillStyle = iag;
-      ctx.fillRect(0, 0, infoPanelW, 2);
-
-      // Lootbox image with golden glow
-      if (assets.lootbox && assets.lootbox.complete) {
-        const liSz = 46, liX = infoPanelW / 2 - liSz / 2, liY = 11;
-        ctx.save();
-        if (!perfMode) {
-          const lg = 0.5 + 0.3 * Math.sin(globalTime * 2.2);
-          ctx.shadowColor = `rgba(255,190,60,${lg})`;
-          ctx.shadowBlur = 16;
-        }
-        ctx.drawImage(assets.lootbox, liX, liY, liSz, liSz);
-        ctx.restore();
-        ctx.strokeStyle = "rgba(255,200,80,0.55)";
-        ctx.lineWidth = 1.5;
-        ctx.strokeRect(liX, liY, liSz, liSz);
+      let slideOff, alpha;
+      if (t < 0.10) {
+        alpha = t / 0.10;
+        slideOff = (1 - alpha) * 10;
+      } else if (t < 0.85) {
+        alpha = 1;
+        slideOff = 0;
+      } else {
+        alpha = Math.max(0, 1 - (t - 0.85) / 0.15);
+        slideOff = -(1 - alpha) * 6;
       }
 
-      // POWERUPS heading
+      const eff = hintEffects[cycleIdx];
+      const hintW = 288;
+      const hintHH = 38;
+      const hintX = leftCX - hintW / 2;
+      const baseHintY = startButtonY + btnH + 22;
+      const hintY = Math.round(baseHintY + slideOff);
+
+      ctx.save();
+      ctx.globalAlpha = hintFade * alpha;
+
+      // Left accent bar
+      ctx.fillStyle = eff.color;
+      ctx.globalAlpha = hintFade * alpha * 0.85;
+      ctx.fillRect(hintX, hintY, 3, hintHH);
+      ctx.globalAlpha = hintFade * alpha;
+
+      // Bullet or star
       ctx.textAlign = "center";
       ctx.textBaseline = "middle";
-      ctx.font = `400 10px ${PRIMARY_FONT}`;
-      ctx.fillStyle = "#e0f4ff";
-      if (!perfMode) { ctx.shadowColor = "rgba(79,210,255,0.6)"; ctx.shadowBlur = 10; }
-      ctx.fillText("POWERUPS", infoPanelW / 2, 66);
-      ctx.shadowBlur = 0;
+      ctx.font = `700 ${eff.star ? "13" : "9"}px ${SECONDARY_FONT}`;
+      ctx.fillStyle = eff.color;
+      ctx.fillText(eff.star ? "★" : "●", hintX + 16, hintY + hintHH / 2);
 
-      // Divider
-      ctx.strokeStyle = "rgba(79,160,255,0.22)";
-      ctx.lineWidth = 1;
-      ctx.beginPath();
-      ctx.moveTo(14, 77);
-      ctx.lineTo(infoPanelW - 14, 77);
-      ctx.stroke();
-
-      // Effect rows — staggered fade-in
-      const infoEffects = [
-        { color: "#88ccff", rgb: "136,204,255", label: "Geist",      desc: "Hindernisse passieren" },
-        { color: "#5cc8ff", rgb: "92,200,255",  label: "Schild",     desc: "Nächsten Treffer blocken" },
-        { color: "#ffe066", rgb: "255,224,102", label: "2× Punkte",  desc: "Doppelter Score" },
-        { color: "#8df0c3", rgb: "141,240,195", label: "Schrumpfen", desc: "Kleiner = weniger Treffer" },
-        { color: "#ff8899", rgb: "255,136,153", label: "Groß",       desc: "Werde größer" },
-      ];
-      // Golden box hint row
-      const goldenHint = { color: "#ffd700", rgb: "255,215,0", label: "Goldene Box", desc: "Risiko = mehr Belohnung!" };
-      const allRows = [...infoEffects, goldenHint];
-      const rowH = 36, rowStartY = 82;
-
-      allRows.forEach((eff, i) => {
-        const rowFade = Math.max(0, Math.min(1, (introAnimTimer - 0.45 - i * 0.07) / 0.25));
-        if (rowFade <= 0) return;
-        const ry = rowStartY + i * rowH;
-        const isGoldenRow = (i === allRows.length - 1);
-
-        ctx.globalAlpha = infoFade * rowFade;
-
-        // Tinted row background
-        ctx.fillStyle = `rgba(${eff.rgb},0.07)`;
-        ctx.fillRect(0, ry, infoPanelW, rowH - 1);
-
-        // Left color accent bar
-        ctx.globalAlpha = infoFade * rowFade * 0.9;
-        ctx.fillStyle = eff.color;
-        ctx.fillRect(0, ry, 3, rowH - 1);
-        ctx.globalAlpha = infoFade * rowFade;
-
-        // Dot (star icon for golden row)
-        ctx.fillStyle = eff.color;
-        if (isGoldenRow) {
-          ctx.textAlign = "center";
-          ctx.textBaseline = "middle";
-          ctx.font = `600 13px ${SECONDARY_FONT}`;
-          ctx.fillText("★", 21, ry + rowH / 2);
-        } else {
-          ctx.beginPath();
-          ctx.arc(21, ry + rowH / 2, 5, 0, Math.PI * 2);
-          ctx.fill();
-        }
-
-        // Label — bold, colored
-        ctx.textAlign = "left";
-        ctx.textBaseline = "top";
-        ctx.font = `700 12px ${SECONDARY_FONT}`;
-        ctx.fillStyle = eff.color;
-        ctx.fillText(eff.label, 34, ry + 6);
-
-        // Description — small, muted
-        ctx.font = `400 10px ${SECONDARY_FONT}`;
-        ctx.fillStyle = "rgba(175,215,235,0.65)";
-        ctx.fillText(eff.desc, 34, ry + 20);
-      });
-      ctx.globalAlpha = infoFade;
-
-      // Bottom divider
-      const bDivY = rowStartY + allRows.length * rowH + 6;
-      ctx.strokeStyle = "rgba(79,160,255,0.22)";
-      ctx.lineWidth = 1;
-      ctx.beginPath();
-      ctx.moveTo(14, bDivY);
-      ctx.lineTo(infoPanelW - 14, bDivY);
-      ctx.stroke();
-
-      // [P] Pause — styled keyboard key
-      const hintCY = bDivY + (infoPanelH - bDivY) / 2;
-      const keyW = 22, keyH = 20;
-      const hintPulse = 0.6 + 0.4 * Math.sin(globalTime * 1.5);
-      const keyX = Math.round(infoPanelW / 2 - (keyW + 52) / 2);
-      const keyY = Math.round(hintCY - keyH / 2);
-      // Key box
-      ctx.fillStyle = "rgba(20,50,90,0.85)";
-      ctx.strokeStyle = `rgba(120,190,240,${0.5 + 0.3 * hintPulse})`;
-      ctx.lineWidth = 1.5;
-      ctx.fillRect(keyX, keyY, keyW, keyH);
-      ctx.strokeRect(keyX, keyY, keyW, keyH);
-      // Inner top highlight
-      ctx.fillStyle = "rgba(160,220,255,0.12)";
-      ctx.fillRect(keyX + 2, keyY + 2, keyW - 4, 5);
-      // Key letter
-      ctx.textAlign = "center";
-      ctx.textBaseline = "middle";
-      ctx.font = `700 11px ${SECONDARY_FONT}`;
-      ctx.fillStyle = `rgba(200,235,255,${0.8 + 0.2 * hintPulse})`;
-      ctx.fillText("P", keyX + keyW / 2, keyY + keyH / 2 + 0.5);
-      // Pause label
+      // Label
       ctx.textAlign = "left";
-      ctx.textBaseline = "middle";
-      ctx.font = `400 12px ${SECONDARY_FONT}`;
-      ctx.fillStyle = `rgba(160,210,240,${0.65 + 0.25 * hintPulse})`;
-      ctx.fillText("Pause", keyX + keyW + 8, hintCY);
+      ctx.textBaseline = "top";
+      ctx.font = `700 13px ${SECONDARY_FONT}`;
+      ctx.fillStyle = eff.color;
+      ctx.fillText(eff.label, hintX + 28, hintY + 5);
+
+      // Description
+      ctx.font = `400 11px ${SECONDARY_FONT}`;
+      ctx.fillStyle = "rgba(175,215,235,0.65)";
+      ctx.fillText(eff.desc, hintX + 28, hintY + 21);
+
+      // Progress dots
+      const dotCount = hintEffects.length;
+      const dotGap = 11;
+      const dotsW = (dotCount - 1) * dotGap;
+      const dotsStartX = leftCX - dotsW / 2;
+      const dotsY = Math.round(baseHintY + hintHH + 9);
+      ctx.globalAlpha = hintFade;
+      for (let di = 0; di < dotCount; di++) {
+        ctx.beginPath();
+        ctx.arc(dotsStartX + di * dotGap, dotsY, di === cycleIdx ? 3 : 1.8, 0, Math.PI * 2);
+        ctx.fillStyle = di === cycleIdx ? hintEffects[di].color : "rgba(100,150,200,0.28)";
+        ctx.fill();
+      }
 
       ctx.restore();
+
+      // [P] Pause hint — fixed position below dots
+      const pauseFade = Math.max(0, Math.min(1, (introAnimTimer - 0.7) / 0.3));
+      if (pauseFade > 0) {
+        const pausePulse = 0.6 + 0.4 * Math.sin(globalTime * 1.5);
+        const pHintY = Math.round(baseHintY + hintHH + 28);
+        const keyW = 19, keyH = 17;
+        const keyX = Math.round(leftCX - (keyW + 40) / 2);
+        const keyY_p = Math.round(pHintY - keyH / 2);
+        ctx.save();
+        ctx.globalAlpha = hintFade * pauseFade * (0.5 + 0.2 * pausePulse);
+        ctx.fillStyle = "rgba(20,50,90,0.85)";
+        ctx.strokeStyle = `rgba(120,190,240,${0.45 + 0.3 * pausePulse})`;
+        ctx.lineWidth = 1.5;
+        ctx.fillRect(keyX, keyY_p, keyW, keyH);
+        ctx.strokeRect(keyX, keyY_p, keyW, keyH);
+        ctx.textAlign = "center";
+        ctx.textBaseline = "middle";
+        ctx.font = `700 10px ${SECONDARY_FONT}`;
+        ctx.fillStyle = "rgba(200,235,255,0.85)";
+        ctx.fillText("P", keyX + keyW / 2, keyY_p + keyH / 2);
+        ctx.textAlign = "left";
+        ctx.font = `400 11px ${SECONDARY_FONT}`;
+        ctx.fillStyle = "rgba(140,190,220,0.7)";
+        ctx.fillText("Pause", keyX + keyW + 6, pHintY);
+        ctx.restore();
+      }
     }
 
     // ── 4. Footer credits ────────────────────────────────────────────────
