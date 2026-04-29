@@ -1370,6 +1370,7 @@ Boss erscheint.`,
       _musicPlay('mainTheme');
     }
 
+    if (bossSpawnGraceTimer > 0) bossSpawnGraceTimer = 0;
     player.vy = player.jumpStrength;
     sfxJump();
     flapCount++;
@@ -2282,13 +2283,16 @@ Boss erscheint.`,
     if (Math.random() < lootSpawnChance) {
       // 25% chance for a golden risky box at the gap edge (only if gap is wide enough)
       const isGolden = Math.random() < 0.25 && pipeGap > 110;
-      let centerY, type;
+      let centerY, type, pipeYOffset;
       if (isGolden) {
         const atTop = Math.random() < 0.5;
-        centerY = atTop ? pipe.gapY + 22 : pipe.gapY + pipeGap - 22;
+        // Place outside the gap (in the solid pipe area) as a risky reward
+        pipeYOffset = atTop ? -22 : pipeGap + 22;
+        centerY = pipe.gapY + pipeYOffset;
         type = Math.random() < 0.55 ? "double" : "shield";
       } else {
-        centerY = pipe.gapY + pipeGap / 2;
+        pipeYOffset = pipeGap / 2;
+        centerY = pipe.gapY + pipeYOffset;
         type = randomPowerup(getPhaseIndex());
       }
       if (type === "ghost") ghostChallenge = true;
@@ -2296,8 +2300,9 @@ Boss erscheint.`,
         x: pipe.x + pipeWidth / 2,
         y: centerY,
         baseY: centerY,
+        pipeYOffset,
         swayPhase: Math.random() * Math.PI * 2,
-        swayAmp: isGolden ? 10 : 26 + Math.random() * 18,
+        swayAmp: isGolden ? 0 : 26 + Math.random() * 18,
         size: Math.round(63 * SIZE_SCALE),
         collected: false,
         type,
@@ -2381,7 +2386,8 @@ Boss erscheint.`,
         }
       } else if (b.pipe) {
         b.x = b.pipe.x + pipeWidth / 2;
-        b.y = b.pipe.gapY + pipeGap / 2 + sway;
+        const yOff = b.pipeYOffset !== undefined ? b.pipeYOffset : pipeGap / 2;
+        b.y = b.pipe.gapY + yOff + sway;
       } else {
         b.x -= spd * dt;
         b.y = b.baseY + sway;
