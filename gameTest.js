@@ -339,6 +339,10 @@ document.addEventListener("DOMContentLoaded", () => {
         if (getComputedStyle(_wrap).position === 'static') _wrap.style.position = 'relative';
         _wrap.appendChild(_splashEl);
       }
+      // Returning to embedded view (e.g. mobile rotate-back to portrait):
+      // mute music so it doesn't keep playing while the user is back on
+      // the surrounding webpage.
+      if (audio.musicEnabled) audioToggleMusic();
     } else {
       // Fullscreen: hoist to body, lock body scroll
       document.body.appendChild(canvas);
