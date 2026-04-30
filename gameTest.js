@@ -58,12 +58,19 @@ document.addEventListener("DOMContentLoaded", () => {
     document.body.appendChild(_rotateEl);
   }
   // Gate the rotate overlay so it only appears after the user has tapped
-  // the splash. Otherwise it would block the page on first load.
+  // the splash. Once the user reaches landscape orientation once, the hint
+  // is suppressed forever — they've seen it, no need to nag if they rotate
+  // back to portrait to scroll the page.
   let _splashDismissed = false;
+  let _landscapeReached = false;
   function _updateRotateOverlay() {
     if (!_rotateEl) return;
-    if (!_splashDismissed) { _rotateEl.style.display = 'none'; return; }
-    const show = window.matchMedia('(pointer:coarse)').matches && window.innerHeight > window.innerWidth;
+    const isPortrait = window.innerHeight > window.innerWidth;
+    if (!isPortrait) _landscapeReached = true;
+    let show = false;
+    if (_splashDismissed && !_landscapeReached && isPortrait) {
+      show = window.matchMedia('(pointer:coarse)').matches;
+    }
     _rotateEl.style.display = show ? 'flex' : 'none';
     if (show) { _musicPause(); } else { _musicResume(); }
   }
@@ -654,7 +661,8 @@ document.addEventListener("DOMContentLoaded", () => {
     nameOverlay.style.alignItems = "center";
     nameOverlay.style.justifyContent = "center";
     nameOverlay.style.background = "rgba(0,0,0,0.65)";
-    nameOverlay.style.zIndex = "9999";
+    // Above splash (10000), rotate-hint (10001), so it works even mid-game in fullscreen
+    nameOverlay.style.zIndex = "10050";
 
     const panel = document.createElement("div");
     panel.style.background = "rgba(8,16,32,0.92)";
@@ -751,8 +759,10 @@ document.addEventListener("DOMContentLoaded", () => {
     if (nameErrorLabel) nameErrorLabel.textContent = message || "";
     if (nameOverlay) {
       nameOverlay.style.display = "flex";
+      // iOS requires focus() to run SYNCHRONOUSLY inside the user-gesture
+      // handler, otherwise the on-screen keyboard won't appear.
       if (nameInput) {
-        requestAnimationFrame(() => nameInput.focus());
+        try { nameInput.focus(); } catch (_) {}
       }
     }
   }
