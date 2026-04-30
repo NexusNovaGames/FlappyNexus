@@ -10,8 +10,15 @@ document.addEventListener("DOMContentLoaded", () => {
   const _hasWrap = !!(_wrap && _wrap !== document.body);
 
   function _isMobileNow() {
-    return window.matchMedia("(pointer: coarse)").matches
-        && window.matchMedia("(max-width: 1024px)").matches;
+    // Only treat as "mobile" if the DEVICE screen (not browser window) is phone-sized.
+    // Otherwise touchscreen laptops or narrow desktop browsers would trigger the
+    // landscape-fullscreen flip and break the embed.
+    const coarsePointer = window.matchMedia("(pointer: coarse)").matches;
+    const smallScreen = Math.min(
+      (window.screen && window.screen.width) || 9999,
+      (window.screen && window.screen.height) || 9999
+    ) <= 768;
+    return coarsePointer && smallScreen;
   }
   function _isPortraitNow() {
     return window.innerHeight > window.innerWidth;
