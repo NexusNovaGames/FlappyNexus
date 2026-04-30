@@ -1781,7 +1781,7 @@ Boss erscheint.`,
 
   function checkScoreTaunts() {
     if (nnTauntActive) return false;
-    if (phaseTextActive) return false;
+    // Note: don't block on phaseTextActive — startNnTaunt picks a different lane
     if (!playerName || !getHighlightInfo(playerName).isHighlight) return false;
     if (score < SCORE_TAUNT_MIN || score > SCORE_TAUNT_MAX) return false;
     if (nextScoreTaunt <= 0) scheduleNextScoreTaunt();
@@ -2337,6 +2337,7 @@ Boss erscheint.`,
         collected: false,
         type,
         golden: isGolden,
+        moveset: isGolden ? Math.floor(Math.random() * 4) : 0,
         img: assets.lootbox,
         pipe,
       });
@@ -2371,7 +2372,9 @@ Boss erscheint.`,
 
       if (!p.passed && p.x + pipeWidth < player.x - player.radius) {
         p.passed = true;
-        const add = (player.doubleTimer > 0 ? 2 : 1) + (player.scoreRushTimer > 0 ? 1 : 0);
+        // ScoreRush adds +1 first, then double multiplies — (1 + rush) * mult
+        const baseAdd = 1 + (player.scoreRushTimer > 0 ? 1 : 0);
+        const add = baseAdd * (player.doubleTimer > 0 ? 2 : 1);
         score += add;
         scorePopups.push({ x: player.x, y: player.y - 30, life: 0.75, text: `+${add}` });
         const hueStep = Math.floor(score / 10);
@@ -2401,20 +2404,41 @@ Boss erscheint.`,
 
     for (let i = lootboxes.length - 1; i >= 0; i--) {
       const b = lootboxes[i];
-      // Compute pattern offsets (Z-trace for golden, sine sway for normal)
+      // Compute pattern offsets — golden boxes randomly pick one of 4 movesets at spawn
       let xOff = 0, yOff;
       if (b.golden) {
-        // Z-trace: 4 phases, 25% each — top stroke, diag down-left, bottom stroke, diag up-left
-        // Both X and Y oscillate so the path is clearly 2D (not just up/down)
-        const zPeriod = 3.0;
-        const p = (((lootSwayTimer + b.swayPhase) / zPeriod) % 1 + 1) % 1;
-        let xR, yR;
-        if (p < 0.25)        { const t = p / 0.25;          xR = -1 + t * 2; yR = -1; }
-        else if (p < 0.50)   { const t = (p - 0.25) / 0.25; xR =  1 - t * 2; yR = -1 + t * 2; }
-        else if (p < 0.75)   { const t = (p - 0.50) / 0.25; xR = -1 + t * 2; yR =  1; }
-        else                 { const t = (p - 0.75) / 0.25; xR =  1 - t * 2; yR =  1 - t * 2; }
-        xOff = xR * 110;            // horizontal swing amplitude
-        yOff = yR * b.swayAmp;      // vertical swing amplitude
+        const tt = lootSwayTimer + b.swayPhase;
+        if (b.moveset === 0) {
+          // Z-trace (zigzag with horizontal sway)
+          const zPeriod = 3.0;
+          const p = (((tt) / zPeriod) % 1 + 1) % 1;
+          let xR, yR;
+          if (p < 0.25)        { const u = p / 0.25;          xR = -1 + u * 2; yR = -1; }
+          else if (p < 0.50)   { const u = (p - 0.25) / 0.25; xR =  1 - u * 2; yR = -1 + u * 2; }
+          else if (p < 0.75)   { const u = (p - 0.50) / 0.25; xR = -1 + u * 2; yR =  1; }
+          else                 { const u = (p - 0.75) / 0.25; xR =  1 - u * 2; yR =  1 - u * 2; }
+          xOff = xR * 110;
+          yOff = yR * b.swayAmp;
+        } else if (b.moveset === 1) {
+          // Circle orbit
+          xOff = Math.cos(tt * 1.3) * 110;
+          yOff = Math.sin(tt * 1.3) * b.swayAmp;
+        } else if (b.moveset === 2) {
+          // Figure-8 / infinity (Lissajous 1:2)
+          xOff = Math.sin(tt * 1.3) * 130;
+          yOff = Math.sin(tt * 2.6) * b.swayAmp * 0.85;
+        } else {
+          // Diamond rotation: top → right → bottom → left → top
+          const period = 3.2;
+          const p = (((tt) / period) % 1 + 1) % 1;
+          let xR, yR;
+          if (p < 0.25)        { const u = p / 0.25;          xR = u;      yR = -1 + u; }
+          else if (p < 0.50)   { const u = (p - 0.25) / 0.25; xR = 1 - u;  yR = u; }
+          else if (p < 0.75)   { const u = (p - 0.50) / 0.25; xR = -u;     yR = 1 - u; }
+          else                 { const u = (p - 0.75) / 0.25; xR = -1 + u; yR = -u; }
+          xOff = xR * 110;
+          yOff = yR * b.swayAmp;
+        }
       } else {
         yOff = Math.sin(lootSwayTimer * 2 + b.swayPhase) * b.swayAmp;
       }
