@@ -683,10 +683,26 @@ document.addEventListener("DOMContentLoaded", () => {
     title.style.marginBottom = "12px";
     panel.appendChild(title);
 
+    // Wrap in a form so the Enter / "Done" key on mobile keyboards submits reliably.
+    // Different mobile browsers fire different events for the Enter key
+    // (keydown vs keypress vs implicit form submit), but a <form> with onsubmit
+    // catches all of them.
+    const nameForm = document.createElement("form");
+    nameForm.style.margin = "0";
+    nameForm.addEventListener("submit", ev => {
+      ev.preventDefault();
+      submitPlayerName();
+    });
+
     nameInput = document.createElement("input");
     nameInput.type = "text";
     nameInput.maxLength = MAX_NAME_LENGTH;
     nameInput.placeholder = "Dein Name";
+    nameInput.autocomplete = "off";
+    nameInput.autocapitalize = "none";
+    nameInput.spellcheck = false;
+    nameInput.setAttribute("enterkeyhint", "done");
+    nameInput.setAttribute("inputmode", "text");
     nameInput.style.width = "100%";
     nameInput.style.padding = "10px";
     nameInput.style.border = "1px solid rgba(79,210,255,0.7)";
@@ -696,13 +712,15 @@ document.addEventListener("DOMContentLoaded", () => {
     nameInput.style.fontFamily = SECONDARY_FONT;
     nameInput.style.fontSize = "16px";
     nameInput.style.marginBottom = "14px";
+    nameInput.style.boxSizing = "border-box";
     nameInput.addEventListener("keydown", ev => {
       if (ev.key === "Enter") {
         ev.preventDefault();
         submitPlayerName();
       }
     });
-    panel.appendChild(nameInput);
+    nameForm.appendChild(nameInput);
+    panel.appendChild(nameForm);
 
     const info = document.createElement("div");
     info.textContent = "Der Name erscheint im Leaderboard.";
@@ -800,6 +818,13 @@ document.addEventListener("DOMContentLoaded", () => {
       return;
     }
     persistPlayerName(sanitized);
+    // Successful save — drop the keyboard, close the overlay, and on mobile
+    // restore browser fullscreen (the keyboard may have collapsed it).
+    try { nameInput.blur(); } catch (_) {}
+    hideNameOverlay();
+    if ((!_hasWrap || _isMobileNow()) && !document.fullscreenElement) {
+      try { document.documentElement.requestFullscreen?.().catch(() => {}); } catch (_) {}
+    }
   }
 
   // Beispiel: hier geht dein Game-Code weiter ...
