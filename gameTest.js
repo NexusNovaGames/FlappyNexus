@@ -719,6 +719,11 @@ document.addEventListener("DOMContentLoaded", () => {
         submitPlayerName();
       }
     });
+    // Mirror typing into introInputValue so even if the user taps Start (= flap)
+    // without explicitly saving, flap()'s sanitize-and-persist path picks the value up.
+    nameInput.addEventListener("input", () => {
+      introInputValue = String(nameInput.value || "");
+    });
     nameForm.appendChild(nameInput);
     panel.appendChild(nameForm);
 
@@ -775,12 +780,17 @@ document.addEventListener("DOMContentLoaded", () => {
   function showNameOverlay(message) {
     ensureNameOverlay();
     if (nameErrorLabel) nameErrorLabel.textContent = message || "";
+    if (nameInput) {
+      // Pre-fill with whatever's already typed/saved, so the user can edit
+      // an existing name without retyping.
+      nameInput.value = (introInputValue && introInputValue.trim()) || playerName || "";
+    }
     if (nameOverlay) {
       nameOverlay.style.display = "flex";
       // iOS requires focus() to run SYNCHRONOUSLY inside the user-gesture
       // handler, otherwise the on-screen keyboard won't appear.
       if (nameInput) {
-        try { nameInput.focus(); } catch (_) {}
+        try { nameInput.focus(); nameInput.select(); } catch (_) {}
       }
     }
   }
