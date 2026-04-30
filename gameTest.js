@@ -74,18 +74,7 @@ document.addEventListener("DOMContentLoaded", () => {
   _splashEl.style.cssText =
     `position:${_splashPos};inset:0;z-index:10000;` +
     'background:#020712 url("https://cdn.jsdelivr.net/gh/NexusNovaPatrickDause/JumpingNexus@main/startscreen.png") center/cover no-repeat;' +
-    'display:flex;align-items:flex-end;justify-content:center;' +
-    'padding-bottom:max(60px,9vh);box-sizing:border-box;cursor:pointer;' +
-    '-webkit-tap-highlight-color:transparent;';
-  const _splashBtn = document.createElement('button');
-  _splashBtn.textContent = 'SPIELEN';
-  _splashBtn.style.cssText =
-    'pointer-events:none;background:rgba(4,16,40,0.78);border:2px solid rgba(79,210,255,0.8);outline:none;' +
-    'color:#cdeeff;font-family:"Press Start 2P",monospace;font-size:18px;' +
-    'letter-spacing:.08em;padding:16px 52px;' +
-    'text-shadow:0 0 12px rgba(79,210,255,.7);' +
-    'box-shadow:0 0 28px rgba(79,210,255,.35),inset 0 0 12px rgba(79,210,255,.08);';
-  _splashEl.appendChild(_splashBtn);
+    'cursor:pointer;-webkit-tap-highlight-color:transparent;';
   if (embedMode) {
     // Need a positioning context on the wrap so position:absolute is bounded by it
     if (getComputedStyle(_wrap).position === 'static') _wrap.style.position = 'relative';
