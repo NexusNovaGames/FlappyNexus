@@ -2,31 +2,56 @@ document.addEventListener("DOMContentLoaded", () => {
   const canvas = document.getElementById("game");
   if (!canvas) return;
 
-  // Move canvas to <body> top-level so position:fixed always references the
-  // real viewport. Webflow containers can have CSS transforms which break
-  // fixed-positioning on descendant elements.
-  if (canvas.parentElement !== document.body) {
-    document.body.appendChild(canvas);
-  }
-  canvas.style.zIndex = '9999';
+  // Embed mode tracks whether the canvas was originally inside a wrap container
+  // (vs. directly in body or somewhere unwrapped). _hasWrap is the static fact;
+  // embedMode is the dynamic state — it can flip to fullscreen on mobile-landscape
+  // and back to embedded on portrait.
+  const _wrap = canvas.parentElement;
+  const _hasWrap = !!(_wrap && _wrap !== document.body);
 
-  // Build portrait-rotation overlay in JS so it works inside Webflow embeds
-  // (the HTML file's #rotate-overlay isn't part of the Webflow page DOM).
-  let _rotateEl = document.getElementById('nn-rotate-overlay');
-  if (!_rotateEl) {
-    if (!document.getElementById('nn-rotate-style')) {
-      const rs = document.createElement('style');
-      rs.id = 'nn-rotate-style';
-      rs.textContent = '@keyframes nnRotatePhone{0%,35%{transform:rotate(0deg)}55%,80%{transform:rotate(90deg)}100%{transform:rotate(0deg)}}';
-      document.head.appendChild(rs);
+  function _isMobileNow() {
+    return window.matchMedia("(pointer: coarse)").matches
+        && window.matchMedia("(max-width: 1024px)").matches;
+  }
+  function _isPortraitNow() {
+    return window.innerHeight > window.innerWidth;
+  }
+  // Mobile + landscape on an embedded page → switch to fullscreen for playability.
+  // Portrait or desktop → keep the embedded layout.
+  function _shouldEmbed() {
+    if (!_hasWrap) return false;
+    return !( _isMobileNow() && !_isPortraitNow() );
+  }
+  let embedMode = _shouldEmbed();
+
+  if (!embedMode) {
+    // Standalone fullscreen: hoist canvas to body so position:fixed always
+    // references the real viewport (Webflow containers with CSS transforms
+    // break fixed-positioning on descendants).
+    if (canvas.parentElement !== document.body) document.body.appendChild(canvas);
+    canvas.style.zIndex = '9999';
+  }
+
+  // Portrait-rotation overlay — only used in standalone (fullscreen) mode.
+  // In embed mode the host page controls the layout, so we don't show it.
+  let _rotateEl = null;
+  if (!embedMode) {
+    _rotateEl = document.getElementById('nn-rotate-overlay');
+    if (!_rotateEl) {
+      if (!document.getElementById('nn-rotate-style')) {
+        const rs = document.createElement('style');
+        rs.id = 'nn-rotate-style';
+        rs.textContent = '@keyframes nnRotatePhone{0%,35%{transform:rotate(0deg)}55%,80%{transform:rotate(90deg)}100%{transform:rotate(0deg)}}';
+        document.head.appendChild(rs);
+      }
+      _rotateEl = document.createElement('div');
+      _rotateEl.id = 'nn-rotate-overlay';
+      _rotateEl.style.cssText = 'display:none;position:fixed;inset:0;z-index:10001;background:#020712;flex-direction:column;align-items:center;justify-content:center;gap:20px;padding:32px;box-sizing:border-box;font-family:system-ui,sans-serif;color:#cdeeff;text-align:center;';
+      _rotateEl.innerHTML = '<div style="font-size:64px;animation:nnRotatePhone 2.2s ease-in-out infinite;line-height:1">📱</div>'
+        + '<h2 style="margin:0;font-size:18px;font-weight:700;color:#eaf6ff;letter-spacing:.04em">Bitte Handy drehen</h2>'
+        + '<p style="margin:0;font-size:14px;color:rgba(140,200,230,.75);line-height:1.5">Jumping Nexus läuft<br>am besten quer.</p>';
+      document.body.appendChild(_rotateEl);
     }
-    _rotateEl = document.createElement('div');
-    _rotateEl.id = 'nn-rotate-overlay';
-    _rotateEl.style.cssText = 'display:none;position:fixed;inset:0;z-index:10001;background:#020712;flex-direction:column;align-items:center;justify-content:center;gap:20px;padding:32px;box-sizing:border-box;font-family:system-ui,sans-serif;color:#cdeeff;text-align:center;';
-    _rotateEl.innerHTML = '<div style="font-size:64px;animation:nnRotatePhone 2.2s ease-in-out infinite;line-height:1">📱</div>'
-      + '<h2 style="margin:0;font-size:18px;font-weight:700;color:#eaf6ff;letter-spacing:.04em">Bitte Handy drehen</h2>'
-      + '<p style="margin:0;font-size:14px;color:rgba(140,200,230,.75);line-height:1.5">Jumping Nexus läuft<br>am besten quer.</p>';
-    document.body.appendChild(_rotateEl);
   }
   function _updateRotateOverlay() {
     if (!_rotateEl) return;
@@ -37,8 +62,10 @@ document.addEventListener("DOMContentLoaded", () => {
 
   // ── Pre-load splash screen ───────────────────────────────────
   let _splashEl = document.createElement('div');
+  // In embed mode the splash overlays only the wrap; standalone covers the viewport.
+  const _splashPos = embedMode ? 'absolute' : 'fixed';
   _splashEl.style.cssText =
-    'position:fixed;inset:0;z-index:10000;' +
+    `position:${_splashPos};inset:0;z-index:10000;` +
     'background:#020712 url("https://cdn.jsdelivr.net/gh/NexusNovaPatrickDause/JumpingNexus@main/startscreen.png") center/cover no-repeat;' +
     'display:flex;align-items:flex-end;justify-content:center;' +
     'padding-bottom:max(60px,9vh);box-sizing:border-box;cursor:pointer;' +
@@ -52,7 +79,13 @@ document.addEventListener("DOMContentLoaded", () => {
     'text-shadow:0 0 12px rgba(79,210,255,.7);' +
     'box-shadow:0 0 28px rgba(79,210,255,.35),inset 0 0 12px rgba(79,210,255,.08);';
   _splashEl.appendChild(_splashBtn);
-  document.body.appendChild(_splashEl);
+  if (embedMode) {
+    // Need a positioning context on the wrap so position:absolute is bounded by it
+    if (getComputedStyle(_wrap).position === 'static') _wrap.style.position = 'relative';
+    _wrap.appendChild(_splashEl);
+  } else {
+    document.body.appendChild(_splashEl);
+  }
 
   function _dismissSplash() {
     if (!_splashEl) return;
@@ -61,7 +94,9 @@ document.addEventListener("DOMContentLoaded", () => {
     el.style.transition = 'opacity .45s ease';
     el.style.opacity = '0';
     setTimeout(() => { try { el.remove(); } catch (_) {} }, 500);
-    try { document.documentElement.requestFullscreen?.().catch(() => {}); } catch (_) {}
+    if (!embedMode) {
+      try { document.documentElement.requestFullscreen?.().catch(() => {}); } catch (_) {}
+    }
     if (!audio.musicEnabled) audioToggleMusic();
   }
   _splashEl.addEventListener('click', _dismissSplash);
@@ -71,19 +106,21 @@ document.addEventListener("DOMContentLoaded", () => {
   canvas.style.webkitTouchCallout = "none";
   canvas.style.webkitUserSelect = "none";
   canvas.style.userSelect = "none";
-  canvas.style.touchAction = "none";
+  if (!embedMode) canvas.style.touchAction = "none";
   canvas.style.outline = "none";
-  if (document.body) {
-    document.body.style.webkitTapHighlightColor = "transparent";
-    document.body.style.webkitUserSelect = "none";
-    document.body.style.userSelect = "none";
+  if (!embedMode) {
+    if (document.body) {
+      document.body.style.webkitTapHighlightColor = "transparent";
+      document.body.style.webkitUserSelect = "none";
+      document.body.style.userSelect = "none";
+    }
+    document.documentElement.style.webkitTapHighlightColor = "transparent";
+    document.documentElement.style.webkitUserSelect = "none";
+    document.documentElement.style.userSelect = "none";
+    document.documentElement.style.touchAction = "none";
   }
-  document.documentElement.style.webkitTapHighlightColor = "transparent";
-  document.documentElement.style.webkitUserSelect = "none";
-  document.documentElement.style.userSelect = "none";
-  document.documentElement.style.touchAction = "none";
 
-  if (!document.querySelector("style[data-nn-touch]")) {
+  if (!embedMode && !document.querySelector("style[data-nn-touch]")) {
     const style = document.createElement("style");
     style.dataset.nnTouch = "true";
     style.textContent = [
@@ -223,19 +260,25 @@ document.addEventListener("DOMContentLoaded", () => {
     // DPR=2 is visually indistinguishable for a pixel-art game at this scale.
     dpr = isMobile() ? Math.min(2, rawDpr) : rawDpr;
 
-    // Use window dimensions directly so we always fill the real viewport,
-    // even when the canvas is inside a Webflow embed with constrained height.
-    viewW = window.innerWidth;
-    viewH = window.innerHeight;
-
-    // Force canvas CSS — use setAttribute so !important overrides any Webflow rule
-    canvas.setAttribute('style',
-      `position:fixed!important;top:0!important;left:0!important;` +
-      `width:${viewW}px!important;height:${viewH}px!important;` +
-      `z-index:9999!important;background:#02050c;` +
-      `touch-action:none;-webkit-tap-highlight-color:transparent;` +
-      `-webkit-user-select:none;user-select:none;outline:none;`
-    );
+    if (embedMode) {
+      // Use the wrap container's actual rendered size — the page CSS controls layout
+      const rect = _wrap.getBoundingClientRect();
+      viewW = Math.max(1, rect.width);
+      viewH = Math.max(1, rect.height);
+      // Don't override the canvas style — wrap CSS already sets width/height to 100%
+    } else {
+      // Standalone fullscreen: fill the real viewport
+      viewW = window.innerWidth;
+      viewH = window.innerHeight;
+      // Force canvas CSS — use setAttribute so !important overrides any Webflow rule
+      canvas.setAttribute('style',
+        `position:fixed!important;top:0!important;left:0!important;` +
+        `width:${viewW}px!important;height:${viewH}px!important;` +
+        `z-index:9999!important;background:#02050c;` +
+        `touch-action:none;-webkit-tap-highlight-color:transparent;` +
+        `-webkit-user-select:none;user-select:none;outline:none;`
+      );
+    }
     _updateRotateOverlay();
 
     canvas.width = Math.round(viewW * dpr);
@@ -264,8 +307,50 @@ document.addEventListener("DOMContentLoaded", () => {
     perfMode = isMobile();
   }
 
-  window.addEventListener("resize", resizeCanvas);
-  window.addEventListener("orientationchange", () => { resizeCanvas(); _updateRotateOverlay(); });
+  // Dynamic layout: on mobile, an embedded canvas switches to fullscreen on
+  // landscape orientation and snaps back to embedded on portrait.
+  function _applyLayoutMode() {
+    if (!_hasWrap) return; // standalone always fullscreen — no flipping
+    const wantEmbed = _shouldEmbed();
+    if (wantEmbed === embedMode) return;
+    embedMode = wantEmbed;
+    if (embedMode) {
+      // Embedded: move canvas back to wrap, reset styles, allow page scroll
+      try { _wrap.appendChild(canvas); } catch (_) {}
+      canvas.setAttribute('style',
+        'width:100%;height:100%;display:block;cursor:pointer;outline:none;' +
+        '-webkit-tap-highlight-color:transparent;-webkit-user-select:none;user-select:none;'
+      );
+      if (document.body) document.body.style.touchAction = '';
+      document.documentElement.style.touchAction = '';
+      // Move splash overlay back into the wrap if it's still on screen
+      if (_splashEl && _splashEl.parentElement !== _wrap) {
+        _splashEl.style.position = 'absolute';
+        if (getComputedStyle(_wrap).position === 'static') _wrap.style.position = 'relative';
+        _wrap.appendChild(_splashEl);
+      }
+    } else {
+      // Fullscreen: hoist to body, lock body scroll
+      document.body.appendChild(canvas);
+      if (document.body) document.body.style.touchAction = 'none';
+      document.documentElement.style.touchAction = 'none';
+      // Canvas style is reset every frame by resizeCanvas in fullscreen mode
+      // Move splash overlay to body so it covers the viewport
+      if (_splashEl && _splashEl.parentElement !== document.body) {
+        _splashEl.style.position = 'fixed';
+        document.body.appendChild(_splashEl);
+      }
+    }
+    resizeCanvas();
+  }
+
+  window.addEventListener("resize", () => { _applyLayoutMode(); resizeCanvas(); });
+  window.addEventListener("orientationchange", () => { _applyLayoutMode(); resizeCanvas(); _updateRotateOverlay(); });
+  // Also react to the wrap container itself resizing (responsive page layouts)
+  if (_hasWrap && typeof ResizeObserver !== "undefined") {
+    try { new ResizeObserver(() => resizeCanvas()).observe(_wrap); } catch (_) {}
+  }
+  _applyLayoutMode();
   resizeCanvas();
 
   // ── WebAudio SFX ──────────────────────────────────────────────────────────
@@ -1445,17 +1530,20 @@ Boss erscheint.`,
       if (e.code === "Space") { e.preventDefault(); return; } // don't flap while typing
     }
     if (e.code === "Space" || e.code === "ArrowUp") {
-    if (pendingBossId && !bossTransitionActive) {
-      if (bossAwaitingConfirm) {
-        bossTransitionActive = true;
-        bossTransitionTimer = 0;
-        bossAwaitingConfirm = false;
-      } else {
-        revealNextBossStoryLine();
+      // In embed mode, only steal Space/ArrowUp when the canvas is focused —
+      // otherwise the page should be free to scroll with Space.
+      if (embedMode && document.activeElement !== canvas) return;
+      if (pendingBossId && !bossTransitionActive) {
+        if (bossAwaitingConfirm) {
+          bossTransitionActive = true;
+          bossTransitionTimer = 0;
+          bossAwaitingConfirm = false;
+        } else {
+          revealNextBossStoryLine();
+        }
+        e.preventDefault();
+        return;
       }
-      e.preventDefault();
-      return;
-    }
       flap();
       e.preventDefault();
     }
@@ -1544,27 +1632,30 @@ Boss erscheint.`,
     flap();
   }
 
-  canvas.addEventListener("mousedown", handlePointerPress);
+  if (embedMode) {
+    // Embed mode: use only `click` so drag-to-scroll (touchmove without click)
+    // doesn't trigger spurious flaps. Click fires on tap on both desktop and mobile.
+    canvas.addEventListener("click", handlePointerPress);
+  } else {
+    // Standalone mode: original mousedown + touchstart for instant feedback
+    canvas.addEventListener("mousedown", handlePointerPress);
 
-  canvas.addEventListener("touchstart", e => {
-    // Ignore additional fingers — only handle the first touch
-    if (e.touches.length > 1) { e.preventDefault(); return; }
-    // Fullscreen on very first tap (browser requires user gesture)
-    if (!_firstTapDone) {
-      _firstTapDone = true;
-      try { document.documentElement.requestFullscreen?.().catch(() => {}); } catch (_) {}
-    }
-    const p = getWorldPoint(e);
-    handlePointerPress(e);
-    if (p && p.inWorld) e.preventDefault();
-  }, { passive: false });
+    canvas.addEventListener("touchstart", e => {
+      if (e.touches.length > 1) { e.preventDefault(); return; }
+      if (!_firstTapDone) {
+        _firstTapDone = true;
+        try { document.documentElement.requestFullscreen?.().catch(() => {}); } catch (_) {}
+      }
+      const p = getWorldPoint(e);
+      handlePointerPress(e);
+      if (p && p.inWorld) e.preventDefault();
+    }, { passive: false });
 
-  canvas.addEventListener("touchmove", e => {
-    const p = getWorldPoint(e);
-    if (p && p.inWorld) {
-      e.preventDefault();
-    }
-  }, { passive: false });
+    canvas.addEventListener("touchmove", e => {
+      const p = getWorldPoint(e);
+      if (p && p.inWorld) e.preventDefault();
+    }, { passive: false });
+  }
 
   // ======================================================
   //  Core Helpers
