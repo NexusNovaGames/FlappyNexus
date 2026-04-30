@@ -39,7 +39,7 @@ document.addEventListener("DOMContentLoaded", () => {
   let _splashEl = document.createElement('div');
   _splashEl.style.cssText =
     'position:fixed;inset:0;z-index:10000;' +
-    'background:#020712 url("https://cdn.jsdelivr.net/gh/NexusNovaPatrickDause/JumpingNexus@main/startscreen.png") center/cover no-repeat;' +
+    'background:#020712 url("https://raw.githubusercontent.com/NexusNovaPatrickDause/JumpingNexus/main/startscreen.png") center/cover no-repeat;' +
     'display:flex;align-items:flex-end;justify-content:center;' +
     'padding-bottom:max(60px,9vh);box-sizing:border-box;cursor:pointer;' +
     '-webkit-tap-highlight-color:transparent;';
