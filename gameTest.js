@@ -39,26 +39,23 @@ document.addEventListener("DOMContentLoaded", () => {
     canvas.style.zIndex = '9999';
   }
 
-  // Portrait-rotation overlay — only used in standalone (fullscreen) mode.
-  // In embed mode the host page controls the layout, so we don't show it.
-  let _rotateEl = null;
-  if (!embedMode) {
-    _rotateEl = document.getElementById('nn-rotate-overlay');
-    if (!_rotateEl) {
-      if (!document.getElementById('nn-rotate-style')) {
-        const rs = document.createElement('style');
-        rs.id = 'nn-rotate-style';
-        rs.textContent = '@keyframes nnRotatePhone{0%,35%{transform:rotate(0deg)}55%,80%{transform:rotate(90deg)}100%{transform:rotate(0deg)}}';
-        document.head.appendChild(rs);
-      }
-      _rotateEl = document.createElement('div');
-      _rotateEl.id = 'nn-rotate-overlay';
-      _rotateEl.style.cssText = 'display:none;position:fixed;inset:0;z-index:10001;background:#020712;flex-direction:column;align-items:center;justify-content:center;gap:20px;padding:32px;box-sizing:border-box;font-family:system-ui,sans-serif;color:#cdeeff;text-align:center;';
-      _rotateEl.innerHTML = '<div style="font-size:64px;animation:nnRotatePhone 2.2s ease-in-out infinite;line-height:1">📱</div>'
-        + '<h2 style="margin:0;font-size:18px;font-weight:700;color:#eaf6ff;letter-spacing:.04em">Bitte Handy drehen</h2>'
-        + '<p style="margin:0;font-size:14px;color:rgba(140,200,230,.75);line-height:1.5">Jumping Nexus läuft<br>am besten quer.</p>';
-      document.body.appendChild(_rotateEl);
+  // Portrait-rotation overlay — shown on mobile portrait in any mode.
+  // _updateRotateOverlay() auto-hides it on desktop or landscape.
+  let _rotateEl = document.getElementById('nn-rotate-overlay');
+  if (!_rotateEl) {
+    if (!document.getElementById('nn-rotate-style')) {
+      const rs = document.createElement('style');
+      rs.id = 'nn-rotate-style';
+      rs.textContent = '@keyframes nnRotatePhone{0%,35%{transform:rotate(0deg)}55%,80%{transform:rotate(90deg)}100%{transform:rotate(0deg)}}';
+      document.head.appendChild(rs);
     }
+    _rotateEl = document.createElement('div');
+    _rotateEl.id = 'nn-rotate-overlay';
+    _rotateEl.style.cssText = 'display:none;position:fixed;inset:0;z-index:10001;background:#020712;flex-direction:column;align-items:center;justify-content:center;gap:20px;padding:32px;box-sizing:border-box;font-family:system-ui,sans-serif;color:#cdeeff;text-align:center;';
+    _rotateEl.innerHTML = '<div style="font-size:64px;animation:nnRotatePhone 2.2s ease-in-out infinite;line-height:1">📱</div>'
+      + '<h2 style="margin:0;font-size:18px;font-weight:700;color:#eaf6ff;letter-spacing:.04em">Bitte Handy drehen</h2>'
+      + '<p style="margin:0;font-size:14px;color:rgba(140,200,230,.75);line-height:1.5">Jumping Nexus läuft<br>am besten quer im Vollbildmodus.</p>';
+    document.body.appendChild(_rotateEl);
   }
   function _updateRotateOverlay() {
     if (!_rotateEl) return;
@@ -90,7 +87,10 @@ document.addEventListener("DOMContentLoaded", () => {
     el.style.transition = 'opacity .45s ease';
     el.style.opacity = '0';
     setTimeout(() => { try { el.remove(); } catch (_) {} }, 500);
-    if (!embedMode) {
+    // Request real browser fullscreen on mobile (hides URL bar / tabs).
+    // On standalone (no wrap) we always go fullscreen too.
+    // Desktop with wrap stays embedded — no fullscreen API call.
+    if (!_hasWrap || _isMobileNow()) {
       try { document.documentElement.requestFullscreen?.().catch(() => {}); } catch (_) {}
     }
     if (!audio.musicEnabled) audioToggleMusic();
