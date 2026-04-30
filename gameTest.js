@@ -1611,8 +1611,15 @@ Boss erscheint.`,
 
     if (!gameRunning && !gameOver) {
       if (introNameRect && pointInBtn(p, introNameRect)) {
-        introInputActive = true;
-        introInputBlinkTimer = 0;
+        // Touch devices have no physical keyboard for the canvas-rendered
+        // intro name field — open the HTML overlay (which has a real <input>
+        // and triggers the virtual keyboard) instead.
+        if (window.matchMedia("(pointer: coarse)").matches) {
+          showNameOverlay();
+        } else {
+          introInputActive = true;
+          introInputBlinkTimer = 0;
+        }
         return;
       }
       if (nameButtonRect && pointInBtn(p, nameButtonRect)) {
