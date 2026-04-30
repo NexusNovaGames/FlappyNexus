@@ -57,8 +57,12 @@ document.addEventListener("DOMContentLoaded", () => {
       + '<p style="margin:0;font-size:14px;color:rgba(140,200,230,.75);line-height:1.5">Jumping Nexus läuft<br>am besten quer im Vollbildmodus.</p>';
     document.body.appendChild(_rotateEl);
   }
+  // Gate the rotate overlay so it only appears after the user has tapped
+  // the splash. Otherwise it would block the page on first load.
+  let _splashDismissed = false;
   function _updateRotateOverlay() {
     if (!_rotateEl) return;
+    if (!_splashDismissed) { _rotateEl.style.display = 'none'; return; }
     const show = window.matchMedia('(pointer:coarse)').matches && window.innerHeight > window.innerWidth;
     _rotateEl.style.display = show ? 'flex' : 'none';
     if (show) { _musicPause(); } else { _musicResume(); }
@@ -93,6 +97,9 @@ document.addEventListener("DOMContentLoaded", () => {
     if (!_hasWrap || _isMobileNow()) {
       try { document.documentElement.requestFullscreen?.().catch(() => {}); } catch (_) {}
     }
+    // Now the rotate overlay is allowed to appear (only on mobile portrait)
+    _splashDismissed = true;
+    _updateRotateOverlay();
     if (!audio.musicEnabled) audioToggleMusic();
   }
   _splashEl.addEventListener('click', _dismissSplash);
