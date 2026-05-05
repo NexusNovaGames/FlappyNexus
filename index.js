@@ -1,7 +1,7 @@
 export default {
   async fetch(request, env) {
     const headers = {
-      "Access-Control-Allow-Origin": env.ALLOW_ORIGIN || "*",
+      "Access-Control-Allow-Origin": "*",
       "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
       "Access-Control-Allow-Headers": "Content-Type",
       "Content-Type": "application/json",
