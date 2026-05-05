@@ -933,7 +933,7 @@ const assets = {
   let leaderboardScrollOffset = 0;
   const LEADERBOARD_SCROLL_SPEED = 22;
   const LEADERBOARD_ENTRY_HEIGHT = 26;
-  const LEADERBOARD_API_URL = "https://flappynexus.ricks-0c1.workers.dev";
+  const LEADERBOARD_API_URL = "https://jumpingnexus.ricks-0c1.workers.dev";
   let lastTime = 0;
   let rawDt = 0;
 
